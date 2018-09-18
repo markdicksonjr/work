@@ -2,16 +2,15 @@ package worker
 
 import (
 	"sync/atomic"
-	"fmt"
 	"time"
-	"log"
 )
 
-func NewDispatcher(jobQueue chan Job, maxWorkers int, workFn func(job Job) error) *Dispatcher {
+func NewDispatcher(jobQueue chan Job, maxWorkers int, workFn WorkFunction, logFn LogFunction) *Dispatcher {
 	workerPool := make(chan chan Job, maxWorkers)
 
 	return &Dispatcher{
 		workFn: workFn,
+		logFn: logFn,
 		jobQueue:   jobQueue,
 		maxWorkers: maxWorkers,
 		workerPool: workerPool,
@@ -22,13 +21,14 @@ type Dispatcher struct {
 	workerPool	chan chan Job
 	maxWorkers	int
 	jobQueue	chan Job
-	workFn		func(job Job) error
+	logFn		LogFunction
+	workFn		WorkFunction
 	workers		[]*Worker
 }
 
 func (d *Dispatcher) Run() {
 	for i := 0; i < d.maxWorkers; i++ {
-		worker := NewWorker(i+1, d.workerPool, d.workFn)
+		worker := NewWorker(i+1, d.workerPool, d.workFn, d.logFn)
 		d.workers = append(d.workers, &worker)
 		worker.start()
 	}
@@ -41,8 +41,7 @@ func (d *Dispatcher) RunCount() int32 {
 
 	for _, v := range d.workers {
 		runningCount := v.GetRunningCount()
-		final := atomic.LoadInt32(&runningCount)
-		total += final
+		total += atomic.LoadInt32(&runningCount)
 	}
 
 	return total
@@ -53,9 +52,9 @@ func (d *Dispatcher) dispatch() {
 		select {
 		case job := <-d.jobQueue:
 			go func() {
-				fmt.Printf("fetching workerJobQueue for: %s\n", job.Name)
+				d.logFn("fetching workerJobQueue for: %s\n", job.Name)
 				workerJobQueue := <-d.workerPool
-				fmt.Printf("adding %s to workerJobQueue\n", job.Name)
+				d.logFn("adding %s to workerJobQueue\n", job.Name)
 				workerJobQueue <- job
 			}()
 		}
@@ -80,7 +79,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 			if runCount == 0 {
 				stopChan <- true
 			} else {
-				log.Println("queued all jobs, but still running", runCount, "of them")
+				d.logFn("queued all jobs, but still running %d of them\n", runCount)
 			}
 		}
 	}()

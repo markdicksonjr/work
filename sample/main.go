@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 	"github.com/markdicksonjr/go-workers"
+	"fmt"
 )
 
 type Addresses struct {
@@ -115,7 +116,7 @@ func main() {
 	jobQueue := make(chan worker.Job, *maxQueueSize)
 
 	// start the dispatcher
-	dispatcher := worker.NewDispatcher(jobQueue, *maxWorkers, doWork)
+	dispatcher := worker.NewDispatcher(jobQueue, *maxWorkers, doWork, fmt.Printf)
 	dispatcher.Run()
 
 	// start decoding

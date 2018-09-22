@@ -3,19 +3,20 @@ package main
 import (
 	"encoding/xml"
 	"flag"
-	"io"
 	"log"
-	"os"
 	"time"
 	"github.com/markdicksonjr/go-workers"
+	xmlWorker "github.com/markdicksonjr/go-workers/xml"
 )
 
+// app-specific struct for "Addresses" xml element
 type Addresses struct {
 	XMLName xml.Name	`xml:"addresses"`
 	Address []Address	`xml:"address"`
 	Text	string		`xml:",chardata"`
 }
 
+// app-specific struct for "Address" xml element
 type Address struct {
 	XMLName	xml.Name	`xml:"address"`
 	Text	string		`xml:",chardata"`
@@ -23,43 +24,49 @@ type Address struct {
 	Street	string		`xml:"street"`
 }
 
+// generic interface for when a structure we care about has been encountered by the reader
 type DecodeEvents interface {
 	onAddress(address Address)
 	onError(err error) (fatal bool)
 }
 
-func decode(events DecodeEvents) {
-	xmlFile, _ := os.Open("test.xml")
-	decoder := xml.NewDecoder(xmlFile)
+// implementation of DecodeEvents, which holds dispatcher and job queue
+type AddressDecodeEvents struct {
+	dispatcher *worker.Dispatcher
+	jobQueue chan worker.Job
+}
 
-	for {
+// address handler for xml reader processing (queues job)
+func (a AddressDecodeEvents) onAddress(address Address) {
+	// TODO: batch these up and send them off to DB?
+	log.Println("Got Address on event handler")
 
-		// decode a token
-		t, err := decoder.Token()
+	job := worker.Job{Name: "address processing", Context: &address}
+	a.jobQueue <- job
+}
 
-		// return an error, if one happened
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
+// error handler from xml reader processing
+func (a AddressDecodeEvents) onError(err error) bool {
+	log.Println("Error: ", err)
+	return true
+}
 
-			if events.onError(err) {
-				break
-			}
-		}
+// the function that's run by the worker (where the work happens)
+func doWork(job worker.Job) error {
+	time.Sleep(time.Second * 3) // TODO: mimic a job that takes 3 seconds
+	return nil
+}
 
-		// stop looping when we have no more tokens
-		if t == nil {
-			break
-		}
-
+// builds a function that converts an XML token to a struct we care about, firing DecodeEvents appropriately
+func generateTokenProcessor(reader xmlWorker.Reader, events DecodeEvents) func(t xml.Token) error {
+	return func(t xml.Token) error {
 		// TODO: reflection could be slow - perhaps have workers to reflect & decode as well as save?
 		// handle each token type of interest
 		switch se := t.(type) {
 		case xml.StartElement:
 			if se.Name.Local == "addresses" {
 				p := Addresses{}
-				decoder.DecodeElement(&p, &se)
+				reader.DecodeToken(&p, &se)
 
 				if len(p.Address) > 0 {
 					for _, v := range p.Address {
@@ -73,35 +80,40 @@ func decode(events DecodeEvents) {
 				log.Println(se.Name.Local)
 
 				p := Address{}
-				decoder.DecodeElement(&p, &se)
+				reader.DecodeToken(&p, &se)
 
 				log.Println(p.Street)
 			}
 		}
+
+		return nil
 	}
 }
 
-type AddressDecodeEvents struct {
-	dispatcher *worker.Dispatcher
-	jobQueue chan worker.Job
-}
+// do the decoding
+func decode(events DecodeEvents) {
+	reader := xmlWorker.Reader{}
+	err := reader.Open("test.xml")
 
-func (a AddressDecodeEvents) onAddress(address Address) {
-	// TODO: batch these up and send them off to DB?
-	log.Println("Got Address on event handler")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	job := worker.Job{Name: "address processing", Context: &address}
-	a.jobQueue <- job
-}
+	isEof := false
 
-func (a AddressDecodeEvents) onError(err error) bool {
-	log.Println("Error: ", err)
-	return true
-}
+	processFn := generateTokenProcessor(reader, events)
 
-func doWork(job worker.Job) error {
-	time.Sleep(time.Second * 3) // TODO: mimic a job that takes 3 seconds
-	return nil
+	for {
+		isEof, err = reader.ProcessToken(processFn)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if isEof {
+			break
+		}
+	}
 }
 
 func main() {

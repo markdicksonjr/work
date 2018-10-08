@@ -6,10 +6,29 @@ import (
 	"os"
 )
 
+// converts a file to records ((data, error) tuples)
 type Reader struct {
-	xmlFile *os.File
+	xmlFile	*os.File
 	decoder *xml.Decoder
 }
+
+type Record struct {
+	TypeName 	string
+	Data		interface{}
+}
+
+type RecordsBuilderResult struct {
+	Records	[]*Record
+	Err		error
+}
+
+type ProcessTokenResult struct {
+	Records       []*Record
+	IsEndOfStream bool
+	Err           error
+}
+
+type RecordsBuilderFunction func(xml.Token) RecordsBuilderResult
 
 func (r *Reader) Open(filename string) error {
 	var err error
@@ -24,7 +43,7 @@ func (r *Reader) Open(filename string) error {
 	return nil
 }
 
-func (r *Reader) ProcessToken(process func(xml.Token) error) (isEOF bool, err error) {
+func (r *Reader) BuildRecordsFromToken(recordsBuilder RecordsBuilderFunction) ProcessTokenResult {
 
 	// decode a token
 	t, err := r.decoder.Token()
@@ -32,18 +51,19 @@ func (r *Reader) ProcessToken(process func(xml.Token) error) (isEOF bool, err er
 	// return an error, if one happened
 	if err != nil {
 		if err == io.EOF {
-			return true, nil
+			return ProcessTokenResult{nil, true, nil}
 		}
 
-		return false, err
+		return ProcessTokenResult{nil, false, err}
 	}
 
 	// stop looping when we have no more tokens
 	if t == nil {
-		return true, nil
+		return ProcessTokenResult{nil, true, nil}
 	}
 
-	return false, process(t)
+	res := recordsBuilder(t)
+	return ProcessTokenResult{res.Records, false, res.Err}
 }
 
 func (r *Reader) DecodeToken(v interface{}, start *xml.StartElement) {

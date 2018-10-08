@@ -24,33 +24,6 @@ type Address struct {
 	Street	string		`xml:"street"`
 }
 
-// generic interface for when a structure we care about has been encountered by the reader
-type DecodeEvents interface {
-	onAddress(address Address)
-	onError(err error) (fatal bool)
-}
-
-// implementation of DecodeEvents, which holds dispatcher and job queue
-type AddressDecodeEvents struct {
-	dispatcher *worker.Dispatcher
-	jobQueue chan worker.Job
-}
-
-// address handler for xml reader processing (queues job)
-func (a AddressDecodeEvents) onAddress(address Address) {
-	// TODO: batch these up and send them off to DB?
-	log.Println("Got Address on event handler")
-
-	job := worker.Job{Name: "address processing", Context: &address}
-	a.jobQueue <- job
-}
-
-// error handler from xml reader processing
-func (a AddressDecodeEvents) onError(err error) bool {
-	log.Println("Error: ", err)
-	return true
-}
-
 // the function that's run by the worker (where the work happens)
 func doWork(job worker.Job) error {
 	time.Sleep(time.Second * 3) // TODO: mimic a job that takes 3 seconds
@@ -58,8 +31,8 @@ func doWork(job worker.Job) error {
 }
 
 // builds a function that converts an XML token to a struct we care about, firing DecodeEvents appropriately
-func generateTokenProcessor(reader xmlWorker.Reader, events DecodeEvents) func(t xml.Token) error {
-	return func(t xml.Token) error {
+func generateTokenProcessor(reader xmlWorker.Reader) func(t xml.Token) xmlWorker.RecordsBuilderResult {
+	return func(t xml.Token) xmlWorker.RecordsBuilderResult {
 		// TODO: reflection could be slow - perhaps have workers to reflect & decode as well as save?
 		// handle each token type of interest
 		switch se := t.(type) {
@@ -69,9 +42,16 @@ func generateTokenProcessor(reader xmlWorker.Reader, events DecodeEvents) func(t
 				reader.DecodeToken(&p, &se)
 
 				if len(p.Address) > 0 {
+
+					// convert addresses to records/records builder result
+					records := make([]*xmlWorker.Record, 0)
 					for _, v := range p.Address {
-						events.onAddress(v)
+						records = append(records, &xmlWorker.Record{
+							TypeName: se.Name.Local,
+							Data: v,
+						})
 					}
+					return xmlWorker.RecordsBuilderResult{Records: records}
 				}
 			}
 
@@ -86,12 +66,12 @@ func generateTokenProcessor(reader xmlWorker.Reader, events DecodeEvents) func(t
 			}
 		}
 
-		return nil
+		return xmlWorker.RecordsBuilderResult{}
 	}
 }
 
 // do the decoding
-func decode(events DecodeEvents) {
+func decode(jobQueue chan worker.Job) {
 	reader := xmlWorker.Reader{}
 	err := reader.Open("test.xml")
 
@@ -99,18 +79,23 @@ func decode(events DecodeEvents) {
 		log.Fatal(err)
 	}
 
-	isEof := false
-
-	processFn := generateTokenProcessor(reader, events)
+	processFn := generateTokenProcessor(reader)
 
 	for {
-		isEof, err = reader.ProcessToken(processFn)
+		result := reader.BuildRecordsFromToken(processFn)
 
-		if err != nil {
+		if result.Err != nil {
 			log.Fatal(err)
 		}
 
-		if isEof {
+		if result.Records != nil && len(result.Records) > 0 {
+			for _, v := range result.Records {
+				job := worker.Job{Name: "address processing", Context: &v, IsEndOfStream: result.IsEndOfStream}
+				jobQueue <- job
+			}
+		}
+
+		if result.IsEndOfStream {
 			break
 		}
 	}
@@ -131,11 +116,7 @@ func main() {
 	dispatcher.Run()
 
 	// start decoding
-	events := AddressDecodeEvents{
-		dispatcher: dispatcher,
-		jobQueue: jobQueue,
-	}
-	decode(&events)
+	decode(jobQueue)
 
 	dispatcher.WaitUntilIdle()
 }

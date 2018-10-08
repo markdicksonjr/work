@@ -15,6 +15,7 @@ type Reader struct {
 	itemsToSave		[]interface{}
 	jobName 		string
 	jobQueue		chan workers.Job
+	reader 			workersXml.Reader
 }
 
 func (a *Reader) Init(
@@ -66,19 +67,16 @@ func (a *Reader) BatchRecord(record interface{}) error {
 	return nil
 }
 
-// within processFn, you should call BatchRecord(obj) when you want to add a record to the batch
 func (a *Reader) Decode(
 	filename string,
-	processFn func(t xml.Token) error,
+	recordsBuilder workersXml.RecordsBuilderFunction,
 ) error {
-	reader := workersXml.Reader{}
-	err := reader.Open(filename)
+	a.reader = workersXml.Reader{}
+	err := a.reader.Open(filename)
 
 	if err != nil {
 		return err
 	}
-
-	isEof := false
 
 	jobQueueCapacity := cap(a.jobQueue)
 
@@ -86,21 +84,33 @@ func (a *Reader) Decode(
 
 		// if the job queue isn't full, process an XML token
 		if len(a.jobQueue) < jobQueueCapacity {
-			isEof, err = reader.ProcessToken(processFn)
+			res := a.reader.BuildRecordsFromToken(recordsBuilder)
 
 			if err != nil {
 				return err
 			}
 
-			if isEof {
-				a.onEndOfData()
+			if res.Records != nil && len(res.Records) > 0 {
+				for _, v := range res.Records {
+					a.BatchRecord(v)
+				}
+			}
+
+			if res.IsEndOfStream {
+
+				// queue any remaining records into the job queue (flush)
+				if len(a.itemsToSave) > 0 {
+					subSlice := (a.itemsToSave)[0:a.batchPosition]
+					job := workers.Job{Name: a.jobName, Context: &subSlice, IsEndOfStream: true}
+					a.jobQueue <- job
+				}
 				break
 			}
 		} else {
 
 			// the job queue is full, so wait a little bit to see if we can catch up a bit before continuing
 			log.Println("waiting to read more XML, because", jobQueueCapacity, "records are queued")
-			time.Sleep(time.Millisecond * 250)
+			time.Sleep(time.Millisecond * 100)
 		}
 	}
 
@@ -110,13 +120,6 @@ func (a *Reader) Decode(
 	return nil
 }
 
-func (a *Reader) onEndOfData() {
-
-	// queue any remaining records
-	if len(a.itemsToSave) > 0 {
-		subSlice := (a.itemsToSave)[0:a.batchPosition]
-		job := workers.Job{Name: a.jobName, Context: &subSlice, IsEndOfStream: true}
-		a.jobQueue <- job
-	}
+func (a *Reader) DecodeToken(v interface{}, start *xml.StartElement) {
+	a.reader.DecodeToken(v, start)
 }
-

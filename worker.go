@@ -5,8 +5,9 @@ import (
 )
 
 type Job struct {
-	Name	string
-	Context	interface{}
+	Name			string
+	Context			interface{}
+	IsEndOfStream	bool
 }
 
 func NewWorker(id int, workerPool chan chan Job, workFn WorkFunction, logFn LogFunction) Worker {

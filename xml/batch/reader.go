@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	workers "github.com/markdicksonjr/go-worker"
 	workersXml "github.com/markdicksonjr/go-worker/xml"
+	"errors"
 )
 
 type Reader struct {
@@ -34,6 +35,10 @@ func (a *Reader) Init(
 }
 
 func (a *Reader) BatchRecord(record interface{}) error {
+
+	if a.dispatcher == nil {
+		return errors.New("BatchRecord called on batch reader before Init")
+	}
 
 	// grab the batch size - default to 100
 	batchSize := a.batchSize
@@ -71,6 +76,11 @@ func (a *Reader) Decode(
 	filename string,
 	recordsBuilder workersXml.RecordsBuilderFunction,
 ) error {
+
+	if a.dispatcher == nil {
+		return errors.New("Decode called on batch reader before Init")
+	}
+
 	a.reader = workersXml.Reader{}
 	err := a.reader.Open(filename)
 
@@ -122,4 +132,8 @@ func (a *Reader) Decode(
 
 func (a *Reader) DecodeToken(v interface{}, start *xml.StartElement) {
 	a.reader.DecodeToken(v, start)
+}
+
+func (a *Reader) WaitUntilIdle() {
+	a.dispatcher.WaitUntilIdle()
 }

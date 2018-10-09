@@ -111,7 +111,7 @@ func (a *Reader) Decode(
 				// queue any remaining records into the job queue (flush)
 				if len(a.itemsToSave) > 0 {
 					subSlice := (a.itemsToSave)[0:a.batchPosition]
-					job := workers.Job{Name: a.jobName, Context: &subSlice, IsEndOfStream: true}
+					job := workers.Job{Name: a.jobName, Context: subSlice, IsEndOfStream: true}
 					a.jobQueue <- job
 				}
 				break

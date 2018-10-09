@@ -4,8 +4,8 @@ import (
 	"log"
 	"time"
 	"encoding/xml"
-	workers "github.com/markdicksonjr/go-workers"
-	workersXml "github.com/markdicksonjr/go-workers/xml"
+	workers "github.com/markdicksonjr/go-worker"
+	workersXml "github.com/markdicksonjr/go-worker/xml"
 )
 
 type Reader struct {

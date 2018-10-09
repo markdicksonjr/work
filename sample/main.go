@@ -5,8 +5,8 @@ import (
 	"flag"
 	"log"
 	"time"
-	"github.com/markdicksonjr/go-workers"
-	xmlWorker "github.com/markdicksonjr/go-workers/xml"
+	"github.com/markdicksonjr/go-worker"
+	xmlWorker "github.com/markdicksonjr/go-worker/xml"
 )
 
 // app-specific struct for "Addresses" xml element

@@ -46,7 +46,7 @@ func (a *Reader) BatchRecord(record interface{}) error {
 		batchSize = 100
 	}
 
-	// allocate the buffer of apps to save, if needed
+	// allocate the buffer of items to save, if needed
 	if a.itemsToSave == nil {
 		newSlice := make([]interface{}, batchSize, batchSize)
 		a.itemsToSave = newSlice

@@ -33,12 +33,14 @@ func (b *Batch) Push(record interface{}, onBatch BatchHandler) error {
 	}
 
 	if b.batchPosition >= b.batchSize {
+		batch := b.itemsToSave
 
 		// allocate a new buffer, put the inbound record as the first item
 		newSlice := make([]interface{}, b.batchSize, b.batchSize)
 		b.itemsToSave = newSlice
 		b.itemsToSave[0] = record
 		b.batchPosition = 1
+		onBatch(batch)
 	} else {
 		b.itemsToSave[b.batchPosition] = record
 		b.batchPosition++

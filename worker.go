@@ -43,18 +43,18 @@ func (w *Worker) start() {
 			select {
 			case job := <-w.jobQueue:
 				atomic.AddInt32(&w.runningCount, 1)
-				w.logFn("worker%d: started %s\n", w.id, job.Name)
+				_, _ = w.logFn("worker%d: started %s\n", w.id, job.Name)
 				err := w.workFn(job)
 				atomic.AddInt32(&w.runningCount, -1)
 
 				// TODO: improve error handling
 				if err != nil {
-					w.logFn("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
+					_, _ = w.logFn("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
 				}
 
-				w.logFn("worker%d: completed %s!\n", w.id, job.Name)
+				_, _ = w.logFn("worker%d: completed %s!\n", w.id, job.Name)
 			case <-w.quitChan:
-				w.logFn("worker%d stopping\n", w.id)
+				_, _ = w.logFn("worker%d stopping\n", w.id)
 				return
 			}
 		}

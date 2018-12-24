@@ -66,6 +66,6 @@ func (r *Reader) BuildRecordsFromToken(recordsBuilder RecordsBuilderFunction) Pr
 	return ProcessTokenResult{res.Records, false, res.Err}
 }
 
-func (r *Reader) DecodeToken(v interface{}, start *xml.StartElement) {
-	r.decoder.DecodeElement(v, start)
+func (r *Reader) DecodeToken(v interface{}, start *xml.StartElement) error {
+	return r.decoder.DecodeElement(v, start)
 }

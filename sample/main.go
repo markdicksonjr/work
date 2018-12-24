@@ -40,7 +40,10 @@ func generateTokenProcessor(reader xmlWorker.Reader) func(t xml.Token) xmlWorker
 		case xml.StartElement:
 			if se.Name.Local == "addresses" {
 				p := Addresses{}
-				reader.DecodeToken(&p, &se)
+
+				if err := reader.DecodeToken(&p, &se); err != nil {
+					log.Fatal(err)
+				}
 
 				if len(p.Address) > 0 {
 
@@ -61,7 +64,10 @@ func generateTokenProcessor(reader xmlWorker.Reader) func(t xml.Token) xmlWorker
 				log.Println(se.Name.Local)
 
 				p := Address{}
-				reader.DecodeToken(&p, &se)
+
+				if err := reader.DecodeToken(&p, &se); err != nil {
+					log.Fatal(err)
+				}
 
 				log.Println(p.Street)
 			}

@@ -130,8 +130,8 @@ func (a *Reader) Decode(
 	return nil
 }
 
-func (a *Reader) DecodeToken(v interface{}, start *xml.StartElement) {
-	a.reader.DecodeToken(v, start)
+func (a *Reader) DecodeToken(v interface{}, start *xml.StartElement) error {
+	return a.reader.DecodeToken(v, start)
 }
 
 func (a *Reader) WaitUntilIdle() {

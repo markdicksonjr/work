@@ -5,12 +5,10 @@ A simple worker pool, with a few utilities for specific use-cases for batch proc
 ## Job Queue Usage
 
 ```go
-// create the job queue
-jobQueue := make(chan worker.Job, 100)
 
 // start the dispatcher
 maxWorkers := 8
-dispatcher := worker.NewDispatcher(jobQueue, maxWorkers, doWork, fmt.Printf)
+dispatcher := worker.NewDispatcher(make(chan worker.Job, 100), maxWorkers, doWork, fmt.Printf)
 dispatcher.Run()
 
 // do something that loads up the jobs repeatedly
@@ -21,8 +19,7 @@ for someCondition {
     v, isEndOfStream, err := BogusDataSource(...)
     
     // put the thing on the queue
-    job := worker.Job{Name: "address processing", Context: &v, IsEndOfStream: isEndOfStream}
-    jobQueue <- job
+    dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &v, IsEndOfStream: isEndOfStream})
 }
 
 dispatcher.WaitUntilIdle()

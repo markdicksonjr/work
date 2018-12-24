@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/xml"
 	"flag"
-	"log"
-	"time"
 	"github.com/markdicksonjr/go-worker"
 	xmlWorker "github.com/markdicksonjr/go-worker/xml"
+	"log"
+	"time"
 )
 
 // app-specific struct for "Addresses" xml element
@@ -26,6 +26,7 @@ type Address struct {
 
 // the function that's run by the worker (where the work happens)
 func doWork(job worker.Job) error {
+	log.Println("working")
 	time.Sleep(time.Second * 3) // TODO: mimic a job that takes 3 seconds
 	return nil
 }
@@ -71,7 +72,7 @@ func generateTokenProcessor(reader xmlWorker.Reader) func(t xml.Token) xmlWorker
 }
 
 // do the decoding
-func decode(jobQueue chan worker.Job) {
+func decode(dispatcher *worker.Dispatcher) {
 	reader := xmlWorker.Reader{}
 	err := reader.Open("test.xml")
 
@@ -91,7 +92,7 @@ func decode(jobQueue chan worker.Job) {
 		if result.Records != nil && len(result.Records) > 0 {
 			for _, v := range result.Records {
 				job := worker.Job{Name: "address processing", Context: &v, IsEndOfStream: result.IsEndOfStream}
-				jobQueue <- job
+				dispatcher.EnqueueJob(job)
 			}
 		}
 
@@ -108,15 +109,12 @@ func main() {
 	)
 	flag.Parse()
 
-	// create the job queue
-	jobQueue := make(chan worker.Job, *maxQueueSize)
-
 	// start the dispatcher
-	dispatcher := worker.NewDispatcher(jobQueue, *maxWorkers, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
+	dispatcher := worker.NewDispatcher(make(chan worker.Job, *maxQueueSize), *maxWorkers, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
 	dispatcher.Run()
 
 	// start decoding
-	decode(jobQueue)
+	decode(dispatcher)
 
 	dispatcher.WaitUntilIdle()
 }

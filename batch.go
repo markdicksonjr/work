@@ -1,6 +1,6 @@
 package worker
 
-import "github.com/pkg/errors"
+import "errors"
 
 type Batch struct {
 	batchPosition	int
@@ -40,7 +40,9 @@ func (b *Batch) Push(record interface{}, onBatch BatchHandler) error {
 		b.itemsToSave = newSlice
 		b.itemsToSave[0] = record
 		b.batchPosition = 1
-		onBatch(batch)
+		if err := onBatch(batch); err != nil {
+			return err
+		}
 	} else {
 		b.itemsToSave[b.batchPosition] = record
 		b.batchPosition++

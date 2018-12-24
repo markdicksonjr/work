@@ -47,18 +47,8 @@ func (d *Dispatcher) RunCount() int32 {
 	return total
 }
 
-func (d *Dispatcher) dispatch() {
-	for {
-		select {
-		case job := <-d.jobQueue:
-			go func() {
-				d.logFn("fetching workerJobQueue for: %s\n", job.Name)
-				workerJobQueue := <-d.workerPool
-				d.logFn("adding %s to workerJobQueue\n", job.Name)
-				workerJobQueue <- job
-			}()
-		}
-	}
+func (d *Dispatcher) EnqueueJob(job Job) {
+	d.jobQueue <- job
 }
 
 // blocks until all workers are idle, then results
@@ -79,11 +69,25 @@ func (d *Dispatcher) WaitUntilIdle() {
 			if runCount == 0 {
 				stopChan <- true
 			} else {
-				d.logFn("queued all jobs, but still running %d of them\n", runCount)
+				_, _ = d.logFn("queued all jobs, but still running %d of them\n", runCount)
 			}
 		}
 	}()
 
 	// block until stop channel written
 	<- stopChan
+}
+
+func (d *Dispatcher) dispatch() {
+	for {
+		select {
+		case job := <-d.jobQueue:
+			go func() {
+				_, _ = d.logFn("fetching workerJobQueue for: %s\n", job.Name)
+				workerJobQueue := <-d.workerPool
+				_, _ = d.logFn("adding %s to workerJobQueue\n", job.Name)
+				workerJobQueue <- job
+			}()
+		}
+	}
 }

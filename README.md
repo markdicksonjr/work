@@ -11,17 +11,18 @@ maxWorkers := 8
 dispatcher := worker.NewDispatcher(make(chan worker.Job, 100), maxWorkers, doWork, fmt.Printf)
 dispatcher.Run()
 
-// do something that loads up the jobs repeatedly
+// do something that loads up the jobs repeatedly (here, we use a for loop)
 // for example, until EOF is reached while reading a file
 for someCondition {
 	
     // do some task to get something to put on the queue
-    v, isEndOfStream, err := BogusDataSource(...)
+    data, isEndOfStream, err := BogusDataSource(...)
     
     // put the thing on the queue
-    dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &v, IsEndOfStream: isEndOfStream})
+    dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &data, IsEndOfStream: isEndOfStream})
 }
 
+// let all jobs finish before proceeding
 dispatcher.WaitUntilIdle()
 ```
 

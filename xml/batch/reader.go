@@ -1,12 +1,12 @@
 package batch
 
 import (
-	"log"
-	"time"
 	"encoding/xml"
+	"errors"
 	workers "github.com/markdicksonjr/go-worker"
 	workersXml "github.com/markdicksonjr/go-worker/xml"
-	"errors"
+	"log"
+	"time"
 )
 
 type Reader struct {
@@ -37,7 +37,7 @@ func (a *Reader) Init(
 func (a *Reader) BatchRecord(record interface{}) error {
 
 	if a.dispatcher == nil {
-		return errors.New("BatchRecord called on batch reader before Init")
+		return errors.New("batchRecord called on batch reader before init")
 	}
 
 	// grab the batch size - default to 100
@@ -78,7 +78,7 @@ func (a *Reader) Decode(
 ) error {
 
 	if a.dispatcher == nil {
-		return errors.New("Decode called on batch reader before Init")
+		return errors.New("decode called on batch reader before init")
 	}
 
 	a.reader = workersXml.Reader{}
@@ -96,13 +96,11 @@ func (a *Reader) Decode(
 		if len(a.jobQueue) < jobQueueCapacity {
 			res := a.reader.BuildRecordsFromToken(recordsBuilder)
 
-			if err != nil {
-				return err
-			}
-
 			if res.Records != nil && len(res.Records) > 0 {
 				for _, v := range res.Records {
-					a.BatchRecord(v)
+					if err := a.BatchRecord(v); err != nil {
+						return err
+					}
 				}
 			}
 

@@ -27,14 +27,20 @@ type Address struct {
 // the function that's run by the worker (where the work happens)
 func doWork(job worker.Job) error {
 	log.Println("working")
-	time.Sleep(time.Second * 3) // TODO: mimic a job that takes 3 seconds
+
+	if job.Context != nil {
+		record := (job.Context).(*xmlWorker.Record)
+		log.Println("encountered " + record.TypeName);
+		time.Sleep(time.Second * 3) // mimic a task that takes 3 seconds
+	}
+
 	return nil
 }
 
 // builds a function that converts an XML token to a struct we care about, firing DecodeEvents appropriately
-func generateTokenProcessor(reader xmlWorker.Reader) func(t xml.Token) xmlWorker.RecordsBuilderResult {
+func tokenRecordsBuilderFunction(reader xmlWorker.Reader) func(t xml.Token) xmlWorker.RecordsBuilderResult {
 	return func(t xml.Token) xmlWorker.RecordsBuilderResult {
-		// TODO: reflection could be slow - perhaps have workers to reflect & decode as well as save?
+
 		// handle each token type of interest
 		switch se := t.(type) {
 		case xml.StartElement:
@@ -86,7 +92,7 @@ func decode(dispatcher *worker.Dispatcher) {
 		log.Fatal(err)
 	}
 
-	processFn := generateTokenProcessor(reader)
+	processFn := tokenRecordsBuilderFunction(reader)
 
 	for {
 		result := reader.BuildRecordsFromToken(processFn)
@@ -97,7 +103,7 @@ func decode(dispatcher *worker.Dispatcher) {
 
 		if result.Records != nil && len(result.Records) > 0 {
 			for _, v := range result.Records {
-				job := worker.Job{Name: "address processing", Context: &v, IsEndOfStream: result.IsEndOfStream}
+				job := worker.Job{Name: "address processing", Context: v, IsEndOfStream: result.IsEndOfStream}
 				dispatcher.EnqueueJob(job)
 			}
 		}

@@ -87,7 +87,7 @@ handler := func(i []interface{}) error {
 
 ### XML
 
-A sample integration of Batch and XML
+A sample integration of Batch and and XML Reader is provided in ./xml/sample.
 
 ## Notes
 

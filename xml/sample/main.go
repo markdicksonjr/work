@@ -5,7 +5,9 @@ import (
 	"flag"
 	"github.com/markdicksonjr/go-worker"
 	xmlWorker "github.com/markdicksonjr/go-worker/xml"
+	xmlWorkerBatch "github.com/markdicksonjr/go-worker/xml/batch"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -29,16 +31,16 @@ func doWork(job worker.Job) error {
 	log.Println("working")
 
 	if job.Context != nil {
-		record := (job.Context).(*xmlWorker.Record)
-		log.Println("encountered " + record.TypeName);
+		record := (job.Context).([]*xmlWorker.Record)
+		log.Println("encountered " + strconv.Itoa(len(record)));
 		time.Sleep(time.Second * 3) // mimic a task that takes 3 seconds
 	}
 
 	return nil
 }
 
-// builds a function that converts an XML token to a struct we care about, firing DecodeEvents appropriately
-func tokenRecordsBuilderFunction(reader xmlWorker.Reader) func(t xml.Token) xmlWorker.RecordsBuilderResult {
+// builds a function that converts an XML token to a struct we want
+func tokenRecordsBuilderFunction(reader *xmlWorkerBatch.Reader) func(t xml.Token) xmlWorker.RecordsBuilderResult {
 	return func(t xml.Token) xmlWorker.RecordsBuilderResult {
 
 		// handle each token type of interest
@@ -83,50 +85,20 @@ func tokenRecordsBuilderFunction(reader xmlWorker.Reader) func(t xml.Token) xmlW
 	}
 }
 
-// do the decoding
-func decode(dispatcher *worker.Dispatcher) {
-	reader := xmlWorker.Reader{}
-	err := reader.Open("test.xml")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	processFn := tokenRecordsBuilderFunction(reader)
-
-	for {
-		result := reader.BuildRecordsFromToken(processFn)
-
-		if result.Err != nil {
-			log.Fatal(err)
-		}
-
-		if result.Records != nil && len(result.Records) > 0 {
-			for _, v := range result.Records {
-				job := worker.Job{Name: "address processing", Context: v, IsEndOfStream: result.IsEndOfStream}
-				dispatcher.EnqueueJob(job)
-			}
-		}
-
-		if result.IsEndOfStream {
-			break
-		}
-	}
-}
-
 func main() {
 	var (
 		maxQueueSize = flag.Int("max_queue_size", 100, "The size of job queue")
+		maxBatchSize = flag.Int("max_batch_size", 100, "The max size of batches sent to workers")
 		maxWorkers   = flag.Int("max_workers", 2, "The number of workers to start")
 	)
 	flag.Parse()
 
-	// start the dispatcher
-	dispatcher := worker.NewDispatcher(*maxQueueSize, *maxWorkers, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
-	dispatcher.Run()
+	// allocate the XML batch reader
+	reader := xmlWorkerBatch.Reader{}
+	reader.Init("address processing", *maxQueueSize, *maxWorkers, *maxBatchSize, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
 
 	// start decoding
-	decode(dispatcher)
-
-	dispatcher.WaitUntilIdle()
+	if err := reader.Decode("test.xml", tokenRecordsBuilderFunction(&reader)); err != nil {
+		log.Fatal(err)
+	}
 }

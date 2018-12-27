@@ -30,6 +30,19 @@ type ProcessTokenResult struct {
 
 type RecordsBuilderFunction func(xml.Token) RecordsBuilderResult
 
+func RecordArrayFromInterfaceArray(i []interface{}) []*Record {
+	var records []*Record = nil
+
+	// loop through the whole batch, casting each to the
+	// correct type from interface{}
+	for _, item := range i {
+		record := item.(*Record)
+		records = append(records, record)
+	}
+
+	return records
+}
+
 func (r *Reader) Open(filename string) error {
 	var err error
 	r.xmlFile, err = os.Open(filename)

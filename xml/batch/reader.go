@@ -48,9 +48,13 @@ func (a *Reader) Decode(
 		return err
 	}
 
-	handler := func(i []interface{}) error {
-		job := workers.Job{Name: a.jobName, Context: i, IsEndOfStream: true}
-		a.dispatcher.EnqueueJob(job)
+	batchHandler := func(i []interface{}) error {
+		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: false})
+		return nil
+	}
+
+	flushHandler := func(i []interface{}) error {
+		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: true})
 		return nil
 	}
 
@@ -63,7 +67,7 @@ func (a *Reader) Decode(
 			// if we got records from the token
 			if res.Records != nil && len(res.Records) > 0 {
 				for _, v := range res.Records {
-					if err := a.batch.Push(v, handler); err != nil {
+					if err := a.batch.Push(v, batchHandler); err != nil {
 						return err
 					}
 				}
@@ -71,6 +75,9 @@ func (a *Reader) Decode(
 
 			// if we've hit the end of the file, exit the for loop
 			if res.IsEndOfStream {
+				if err := a.batch.Flush(flushHandler); err != nil {
+					return err
+				}
 				break;
 			}
 		} else {

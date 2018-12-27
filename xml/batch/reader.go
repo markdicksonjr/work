@@ -10,8 +10,7 @@ import (
 )
 
 type Reader struct {
-	batchPosition	int
-	batchSize		int
+	batch			*workers.Batch
 	dispatcher		*workers.Dispatcher
 	itemsToSave		[]interface{}
 	jobName 		string
@@ -27,55 +26,17 @@ func (a *Reader) Init(
 	logFn workers.LogFunction,
 ) {
 	a.jobName = jobName
-	a.batchSize = batchSize
-	a.batchPosition = 0
+	a.batch = &workers.Batch{}
+	a.batch.Init(batchSize)
+
 	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn, logFn)
 	a.dispatcher.Run()
-}
-
-func (a *Reader) BatchRecord(record interface{}) error {
-
-	if a.dispatcher == nil {
-		return errors.New("batchRecord called on batch reader before init")
-	}
-
-	// grab the batch size - default to 100
-	batchSize := a.batchSize
-	if batchSize == 0 {
-		batchSize = 100
-	}
-
-	// allocate the buffer of items to save, if needed
-	if a.itemsToSave == nil {
-		newSlice := make([]interface{}, batchSize, batchSize)
-		a.itemsToSave = newSlice
-		a.batchPosition = 0
-	}
-
-	// if we have a full batch, queue up the job, otherwise, append
-	if a.batchPosition >= batchSize {
-		job := workers.Job{Name: a.jobName, Context: a.itemsToSave, IsEndOfStream: false}
-
-		// allocate a new buffer
-		newSlice := make([]interface{}, batchSize, batchSize)
-		a.itemsToSave = newSlice
-		a.itemsToSave[0] = record
-		a.batchPosition = 1
-
-		// queue up the job
-		a.dispatcher.EnqueueJob(job)
-	} else {
-		a.itemsToSave[a.batchPosition] = record
-		a.batchPosition++
-	}
-	return nil
 }
 
 func (a *Reader) Decode(
 	filename string,
 	recordsBuilder workersXml.RecordsBuilderFunction,
 ) error {
-
 	if a.dispatcher == nil {
 		return errors.New("decode called on batch reader before init")
 	}
@@ -87,29 +48,30 @@ func (a *Reader) Decode(
 		return err
 	}
 
+	handler := func(i []interface{}) error {
+		job := workers.Job{Name: a.jobName, Context: i, IsEndOfStream: true}
+		a.dispatcher.EnqueueJob(job)
+		return nil
+	}
+
 	for {
 
 		// if the job queue isn't full, process an XML token
 		if !a.dispatcher.IsJobQueueFull() {
 			res := a.reader.BuildRecordsFromToken(recordsBuilder)
 
+			// if we got records from the token
 			if res.Records != nil && len(res.Records) > 0 {
 				for _, v := range res.Records {
-					if err := a.BatchRecord(v); err != nil {
+					if err := a.batch.Push(v, handler); err != nil {
 						return err
 					}
 				}
 			}
 
+			// if we've hit the end of the file, exit the for loop
 			if res.IsEndOfStream {
-
-				// queue any remaining records into the job queue (flush)
-				if len(a.itemsToSave) > 0 {
-					subSlice := (a.itemsToSave)[0:a.batchPosition]
-					job := workers.Job{Name: a.jobName, Context: subSlice, IsEndOfStream: true}
-					a.dispatcher.EnqueueJob(job)
-				}
-				break
+				break;
 			}
 		} else {
 

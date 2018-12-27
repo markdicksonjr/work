@@ -10,13 +10,14 @@ type Job struct {
 	IsEndOfStream	bool
 }
 
-func NewWorker(id int, workerPool chan chan Job, workFn WorkFunction, logFn LogFunction) Worker {
+func NewWorker(id int, workerPool chan chan Job, workFn WorkFunction, jobErrorFn JobErrorFunction, logFn LogFunction) Worker {
 	return Worker{
 		id:         id,
 		jobQueue:   make(chan Job),
 		workerPool: workerPool,
 		quitChan:   make(chan bool),
 		workFn:		workFn,
+		jobErrorFn: jobErrorFn,
 		logFn:		logFn,
 	}
 }
@@ -27,6 +28,7 @@ type Worker struct {
 	workerPool		chan chan Job
 	quitChan		chan bool
 	workFn			WorkFunction
+	jobErrorFn		JobErrorFunction
 	runningCount	int32
 	logFn			LogFunction
 }
@@ -47,9 +49,9 @@ func (w *Worker) start() {
 				err := w.workFn(job)
 				atomic.AddInt32(&w.runningCount, -1)
 
-				// TODO: improve error handling
 				if err != nil {
 					_, _ = w.logFn("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
+					w.jobErrorFn(job, err)
 				}
 
 				_, _ = w.logFn("worker%d: completed %s!\n", w.id, job.Name)

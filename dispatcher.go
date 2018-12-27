@@ -5,11 +5,12 @@ import (
 	"time"
 )
 
-func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, logFn LogFunction) *Dispatcher {
+func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, jobErrFn JobErrorFunction, logFn LogFunction) *Dispatcher {
 	workerPool := make(chan chan Job, maxWorkers)
 
 	return &Dispatcher{
 		workFn: workFn,
+		jobErrorFn: jobErrFn,
 		logFn: logFn,
 		jobQueue:   make(chan Job, maxJobQueueSize),
 		maxWorkers: maxWorkers,
@@ -22,13 +23,14 @@ type Dispatcher struct {
 	maxWorkers	int
 	jobQueue	chan Job
 	logFn		LogFunction
+	jobErrorFn	JobErrorFunction
 	workFn		WorkFunction
 	workers		[]*Worker
 }
 
 func (d *Dispatcher) Run() {
 	for i := 0; i < d.maxWorkers; i++ {
-		worker := NewWorker(i+1, d.workerPool, d.workFn, d.logFn)
+		worker := NewWorker(i+1, d.workerPool, d.workFn, d.jobErrorFn, d.logFn)
 		d.workers = append(d.workers, &worker)
 		worker.start()
 	}

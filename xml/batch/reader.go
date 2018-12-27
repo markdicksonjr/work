@@ -23,13 +23,14 @@ func (a *Reader) Init(
 	maxWorkers int,
 	batchSize int,
 	workFn workers.WorkFunction, // what the worker will be doing (e.g. saving records), where job.Context is a.recordsToSave
+	jobErrFn workers.JobErrorFunction,
 	logFn workers.LogFunction,
 ) {
 	a.jobName = jobName
 	a.batch = &workers.Batch{}
 	a.batch.Init(batchSize)
 
-	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn, logFn)
+	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn, jobErrFn, logFn)
 	a.dispatcher.Run()
 }
 

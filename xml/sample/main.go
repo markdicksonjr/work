@@ -95,7 +95,7 @@ func main() {
 
 	// allocate the XML batch reader
 	reader := xmlWorkerBatch.Reader{}
-	reader.Init("address processing", *maxQueueSize, *maxWorkers, *maxBatchSize, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
+	reader.Init("address processing", *maxQueueSize, *maxWorkers, *maxBatchSize, doWork, worker.JobErrorsFatalLogFunction, worker.NoLogFunction) // fmt.Printf is also a good alternative
 
 	// start decoding
 	if err := reader.Decode("test.xml", tokenRecordsBuilderFunction(&reader)); err != nil {

@@ -52,8 +52,7 @@ func (d *Dispatcher) EnqueueJob(job Job) {
 }
 
 func (d *Dispatcher) IsJobQueueFull() bool {
-	jobQueueCapacity := cap(d.jobQueue)
-	return len(d.jobQueue) >= jobQueueCapacity;
+	return len(d.jobQueue) >= cap(d.jobQueue);
 }
 
 // blocks until all workers are idle, then results

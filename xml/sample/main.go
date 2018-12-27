@@ -122,7 +122,7 @@ func main() {
 	flag.Parse()
 
 	// start the dispatcher
-	dispatcher := worker.NewDispatcher(make(chan worker.Job, *maxQueueSize), *maxWorkers, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
+	dispatcher := worker.NewDispatcher(*maxQueueSize, *maxWorkers, doWork, worker.NoLogFunction) // fmt.Printf is also a good alternative
 	dispatcher.Run()
 
 	// start decoding

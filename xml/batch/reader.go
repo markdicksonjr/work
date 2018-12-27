@@ -15,12 +15,12 @@ type Reader struct {
 	dispatcher		*workers.Dispatcher
 	itemsToSave		[]interface{}
 	jobName 		string
-	jobQueue		chan workers.Job
 	reader 			workersXml.Reader
 }
 
 func (a *Reader) Init(
 	jobName string,
+	maxJobQueueSize int,
 	maxWorkers int,
 	batchSize int,
 	workFn workers.WorkFunction, // what the worker will be doing (e.g. saving records), where job.Context is a.recordsToSave
@@ -29,8 +29,7 @@ func (a *Reader) Init(
 	a.jobName = jobName
 	a.batchSize = batchSize
 	a.batchPosition = 0
-	a.jobQueue = make(chan workers.Job, a.batchSize)
-	a.dispatcher = workers.NewDispatcher(a.jobQueue, maxWorkers, workFn, logFn)
+	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn, logFn)
 	a.dispatcher.Run()
 }
 
@@ -64,7 +63,7 @@ func (a *Reader) BatchRecord(record interface{}) error {
 		a.batchPosition = 1
 
 		// queue up the job
-		a.jobQueue <- job
+		a.dispatcher.EnqueueJob(job)
 	} else {
 		a.itemsToSave[a.batchPosition] = record
 		a.batchPosition++
@@ -88,12 +87,10 @@ func (a *Reader) Decode(
 		return err
 	}
 
-	jobQueueCapacity := cap(a.jobQueue)
-
 	for {
 
 		// if the job queue isn't full, process an XML token
-		if len(a.jobQueue) < jobQueueCapacity {
+		if !a.dispatcher.IsJobQueueFull() {
 			res := a.reader.BuildRecordsFromToken(recordsBuilder)
 
 			if res.Records != nil && len(res.Records) > 0 {
@@ -110,14 +107,14 @@ func (a *Reader) Decode(
 				if len(a.itemsToSave) > 0 {
 					subSlice := (a.itemsToSave)[0:a.batchPosition]
 					job := workers.Job{Name: a.jobName, Context: subSlice, IsEndOfStream: true}
-					a.jobQueue <- job
+					a.dispatcher.EnqueueJob(job)
 				}
 				break
 			}
 		} else {
 
 			// the job queue is full, so wait a little bit to see if we can catch up a bit before continuing
-			log.Println("waiting to read more XML, because", jobQueueCapacity, "records are queued")
+			log.Println("waiting to read more XML, because the job queue is full")
 			time.Sleep(time.Millisecond * 100)
 		}
 	}

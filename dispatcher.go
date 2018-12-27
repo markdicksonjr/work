@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func NewDispatcher(jobQueue chan Job, maxWorkers int, workFn WorkFunction, logFn LogFunction) *Dispatcher {
+func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, logFn LogFunction) *Dispatcher {
 	workerPool := make(chan chan Job, maxWorkers)
 
 	return &Dispatcher{
 		workFn: workFn,
 		logFn: logFn,
-		jobQueue:   jobQueue,
+		jobQueue:   make(chan Job, maxJobQueueSize),
 		maxWorkers: maxWorkers,
 		workerPool: workerPool,
 	}
@@ -51,6 +51,11 @@ func (d *Dispatcher) EnqueueJob(job Job) {
 	d.jobQueue <- job
 }
 
+func (d *Dispatcher) IsJobQueueFull() bool {
+	jobQueueCapacity := cap(d.jobQueue)
+	return len(d.jobQueue) >= jobQueueCapacity;
+}
+
 // blocks until all workers are idle, then results
 func (d *Dispatcher) WaitUntilIdle() {
 
@@ -65,7 +70,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 
 			runCount := d.RunCount()
 
-			// now that nothing is left, write tot he stop channel
+			// now that nothing is left, write to the stop channel
 			if runCount == 0 {
 				stopChan <- true
 			} else {

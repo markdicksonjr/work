@@ -19,6 +19,9 @@ for someCondition {
     // do some task to get something to put on the queue
     data, isEndOfStream, err := BogusDataSource(...)
     
+    // ensure the queue doesn't drop the item
+    dispatcher.BlockWhileQueueFull()
+    
     // put the thing on the queue
     dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &data, IsEndOfStream: isEndOfStream})
 }
@@ -88,6 +91,23 @@ handler := func(i []interface{}) error {
 ### XML
 
 A sample integration of Batch and and XML Reader is provided in ./xml/sample.
+
+### Simple Timer
+
+To use the timer, call `timer.Start("SomeTitle")` where SomeTitle describes the operation that is
+being timed.  When complete, call `timer.Stop("SomeTitle")` where SomeTitle is the same operation
+description used for the corresponding timer Start.
+
+You can output the timings with simple code like this:
+
+```go
+for _, timing := range timer.GetTimings() {
+    log.Println("Running totals for " + timing.Label + ": sum = " + strconv.Itoa(int(timing.TotalTime / 1000000)) + "ms, avg = " + strconv.Itoa(int(timing.TotalTime / 1000000) / timing.Count) + "ms")
+}
+```
+
+If you want to reduce the timer overhead significantly by shutting it off, set "NoOp" to true when initializing the
+timer.
 
 ## Notes
 

@@ -57,6 +57,22 @@ func (d *Dispatcher) IsJobQueueFull() bool {
 	return len(d.jobQueue) >= cap(d.jobQueue);
 }
 
+func (d *Dispatcher) BlockWhileQueueFull() {
+	if d.IsJobQueueFull() {
+		complete := make(chan bool)
+
+		go func() {
+			for d.IsJobQueueFull() {
+				time.Sleep(time.Millisecond * 100)
+			}
+			complete <- true
+		}()
+
+		// wait until the complete channel is written to
+		<- complete
+	}
+}
+
 // blocks until all workers are idle, then results
 func (d *Dispatcher) WaitUntilIdle() {
 

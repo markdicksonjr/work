@@ -6,15 +6,13 @@ import (
 )
 
 func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, jobErrFn JobErrorFunction, logFn LogFunction) *Dispatcher {
-	workerPool := make(chan chan Job, maxWorkers)
-
 	return &Dispatcher{
 		workFn: workFn,
 		jobErrorFn: jobErrFn,
 		logFn: logFn,
 		jobQueue:   make(chan Job, maxJobQueueSize),
 		maxWorkers: maxWorkers,
-		workerPool: workerPool,
+		workerPool: make(chan chan Job, maxWorkers),
 	}
 }
 

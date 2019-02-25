@@ -27,8 +27,7 @@ func (b *Batch) Push(record interface{}, onBatch BatchHandler) error {
 
 	// allocate the buffer of items to save, if needed
 	if b.itemsToSave == nil {
-		newSlice := make([]interface{}, b.batchSize, b.batchSize)
-		b.itemsToSave = newSlice
+		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
 		b.batchPosition = 0
 	}
 
@@ -36,8 +35,7 @@ func (b *Batch) Push(record interface{}, onBatch BatchHandler) error {
 		batch := b.itemsToSave
 
 		// allocate a new buffer, put the inbound record as the first item
-		newSlice := make([]interface{}, b.batchSize, b.batchSize)
-		b.itemsToSave = newSlice
+		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
 		b.itemsToSave[0] = record
 		b.batchPosition = 1
 		if err := onBatch(batch); err != nil {

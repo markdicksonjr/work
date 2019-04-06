@@ -59,18 +59,17 @@ at a time) and process them as a big group, this will be a handy utility.  A sim
 
 ```go
 batch := &worker.Batch{}
-batch.Init(a.BatchSize)
+batch.Init(a.BatchSize, onPush, onFlush)
 
 ...
 
 // for each item that is read, add it to the batch
-if err := batch.Push(item, handler); err != nil {
+if err := batch.Push(item); err != nil {
     return err
 }
-
 ```
 
-Where the handler (called when a batch is large enough to dequeue, or is flushed) might look something like:
+Where the push handler (called when a batch is large enough to dequeue, or is flushed) might look something like:
 
 ```go
 handler := func(i []interface{}) error {
@@ -87,6 +86,13 @@ handler := func(i []interface{}) error {
     return persister.Put(mapStrings)
 }
 ```
+
+After all batches are processed, the user should call flush to ensure the final batch gets processed, as the final batch
+will likely not have been large enough to trigger the push handler.
+
+A flush handler is basically the same thing as the push handler, except it should be in the context of finalizing any 
+state your app may have, and it will contain less than a full batch of records.  In most cases, the same function can be 
+passed for both arguments.
 
 ### XML
 

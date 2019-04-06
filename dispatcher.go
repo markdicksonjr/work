@@ -7,23 +7,28 @@ import (
 
 func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, jobErrFn JobErrorFunction, logFn LogFunction) *Dispatcher {
 	return &Dispatcher{
-		workFn: workFn,
+		workFn:     workFn,
 		jobErrorFn: jobErrFn,
-		logFn: logFn,
+		logFn:      logFn,
 		jobQueue:   make(chan Job, maxJobQueueSize),
 		maxWorkers: maxWorkers,
 		workerPool: make(chan chan Job, maxWorkers),
 	}
 }
 
+type Utilization struct {
+	Id                 int
+	PercentUtilization float32
+}
+
 type Dispatcher struct {
-	workerPool	chan chan Job
-	maxWorkers	int
-	jobQueue	chan Job
-	logFn		LogFunction
-	jobErrorFn	JobErrorFunction
-	workFn		WorkFunction
-	workers		[]*Worker
+	workerPool chan chan Job
+	maxWorkers int
+	jobQueue   chan Job
+	logFn      LogFunction
+	jobErrorFn JobErrorFunction
+	workFn     WorkFunction
+	workers    []*Worker
 }
 
 func (d *Dispatcher) Run() {
@@ -70,10 +75,22 @@ func (d *Dispatcher) BlockWhileQueueFull() bool {
 		}()
 
 		// wait until the complete channel is written to
-		<- complete
+		<-complete
 	}
 
 	return didBlock
+}
+
+func (d *Dispatcher) GetWorkerUtilizations() []Utilization {
+	var results []Utilization
+	for _, v := range d.workers {
+		results = append(results, Utilization{
+			Id:                 v.id,
+			PercentUtilization: v.GetPercentUtilization(),
+		})
+	}
+
+	return results
 }
 
 // blocks until all workers are idle, then results
@@ -100,7 +117,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 	}()
 
 	// block until stop channel written
-	<- stopChan
+	<-stopChan
 }
 
 func (d *Dispatcher) dispatch() {

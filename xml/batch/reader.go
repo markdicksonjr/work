@@ -6,15 +6,16 @@ import (
 	workers "github.com/markdicksonjr/go-worker"
 	workersXml "github.com/markdicksonjr/go-worker/xml"
 	"log"
+	"strconv"
 	"time"
 )
 
 type Reader struct {
-	batch			*workers.Batch
-	dispatcher		*workers.Dispatcher
-	itemsToSave		[]interface{}
-	jobName 		string
-	reader 			workersXml.Reader
+	batch       *workers.Batch
+	dispatcher  *workers.Dispatcher
+	itemsToSave []interface{}
+	jobName     string
+	reader      workersXml.Reader
 }
 
 func (a *Reader) Init(
@@ -28,7 +29,13 @@ func (a *Reader) Init(
 ) {
 	a.jobName = jobName
 	a.batch = &workers.Batch{}
-	a.batch.Init(batchSize)
+	a.batch.Init(batchSize, func(i []interface{}) error {
+		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: false})
+		return nil
+	}, func(i []interface{}) error {
+		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: true})
+		return nil
+	})
 
 	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn, jobErrFn, logFn)
 	a.dispatcher.Run()
@@ -49,16 +56,6 @@ func (a *Reader) Decode(
 		return err
 	}
 
-	batchHandler := func(i []interface{}) error {
-		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: false})
-		return nil
-	}
-
-	flushHandler := func(i []interface{}) error {
-		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: true})
-		return nil
-	}
-
 	for {
 
 		// if the job queue isn't full, process an XML token
@@ -68,7 +65,7 @@ func (a *Reader) Decode(
 			// if we got records from the token
 			if res.Records != nil && len(res.Records) > 0 {
 				for _, v := range res.Records {
-					if err := a.batch.Push(v, batchHandler); err != nil {
+					if err := a.batch.Push(v); err != nil {
 						return err
 					}
 				}
@@ -76,7 +73,7 @@ func (a *Reader) Decode(
 
 			// if we've hit the end of the file, exit the for loop
 			if res.IsEndOfStream {
-				if err := a.batch.Flush(flushHandler); err != nil {
+				if err := a.batch.Flush(); err != nil {
 					return err
 				}
 				break;
@@ -91,6 +88,11 @@ func (a *Reader) Decode(
 
 	// some jobs may be running still - wait until they're done
 	a.dispatcher.WaitUntilIdle()
+
+	utilizations := a.dispatcher.GetWorkerUtilizations()
+	for _, u := range utilizations {
+		log.Println("worker " + strconv.Itoa(u.Id) + " was active " + strconv.FormatFloat(float64(u.PercentUtilization), 'f', 1, 32) + "% of the time")
+	}
 
 	return nil
 }

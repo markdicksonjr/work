@@ -89,8 +89,8 @@ func (a *Reader) Decode(
 	// some jobs may be running still - wait until they're done
 	a.dispatcher.WaitUntilIdle()
 
-	utilizations := a.dispatcher.GetWorkerUtilizations()
-	for _, u := range utilizations {
+	utilization := a.dispatcher.GetUtilization()
+	for _, u := range utilization.ByWorker {
 		log.Println("worker " + strconv.Itoa(u.Id) + " was active " + strconv.FormatFloat(float64(u.PercentUtilization), 'f', 1, 32) + "% of the time")
 	}
 

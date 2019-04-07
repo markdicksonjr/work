@@ -7,18 +7,24 @@ import (
 
 func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, jobErrFn JobErrorFunction, logFn LogFunction) *Dispatcher {
 	return &Dispatcher{
-		workFn:     workFn,
-		jobErrorFn: jobErrFn,
-		logFn:      logFn,
-		jobQueue:   make(chan Job, maxJobQueueSize),
-		maxWorkers: maxWorkers,
-		workerPool: make(chan chan Job, maxWorkers),
+		workFn:                  workFn,
+		jobErrorFn:              jobErrFn,
+		logFn:                   logFn,
+		jobQueue:                make(chan Job, maxJobQueueSize),
+		maxWorkers:              maxWorkers,
+		workerPool:              make(chan chan Job, maxWorkers),
+		idlenessSamplerInterval: 250 * time.Millisecond,
 	}
 }
 
 type Utilization struct {
-	Id                 int
+	ByWorker           []WorkerUtilization
 	PercentUtilization float32
+}
+
+type WorkerUtilization struct {
+	PercentUtilization float32
+	Id                 int
 }
 
 type Dispatcher struct {
@@ -29,8 +35,16 @@ type Dispatcher struct {
 	jobErrorFn JobErrorFunction
 	workFn     WorkFunction
 	workers    []*Worker
+
+	// idleness sampler properties
+	idlenessSamplerStopChannel chan bool
+	idlenessSamplerInterval    time.Duration
+	idlenessQueriedIntervals   int64
+	idlenessIntervals          int64
 }
 
+// start the dispatcher
+// note that this will in no way block the app from proceeding
 func (d *Dispatcher) Run() {
 	for i := 0; i < d.maxWorkers; i++ {
 		worker := NewWorker(i+1, d.workerPool, d.workFn, d.jobErrorFn, d.logFn)
@@ -39,8 +53,10 @@ func (d *Dispatcher) Run() {
 	}
 
 	go d.dispatch()
+	go d.sample()
 }
 
+// get the number of workers currently running
 func (d *Dispatcher) RunCount() int32 {
 	var total int32 = 0
 
@@ -52,14 +68,18 @@ func (d *Dispatcher) RunCount() int32 {
 	return total
 }
 
+// allows users to enqueue jobs into the work queue
 func (d *Dispatcher) EnqueueJob(job Job) {
 	d.jobQueue <- job
 }
 
+// simple check to see if the job queue is maxed out
 func (d *Dispatcher) IsJobQueueFull() bool {
-	return len(d.jobQueue) >= cap(d.jobQueue);
+	return len(d.jobQueue) >= cap(d.jobQueue)
 }
 
+// blocks while the job queue is maxed out.  We don't want to drop the job, but we also don't want a constantly-growing
+// queue ad infinitum
 func (d *Dispatcher) BlockWhileQueueFull() bool {
 	didBlock := false
 
@@ -81,19 +101,24 @@ func (d *Dispatcher) BlockWhileQueueFull() bool {
 	return didBlock
 }
 
-func (d *Dispatcher) GetWorkerUtilizations() []Utilization {
-	var results []Utilization
+// get the overall utilization for the dispatcher (all workers), as well as a summary of how effective each worker was at staying busy
+func (d *Dispatcher) GetUtilization() Utilization {
+	var results []WorkerUtilization
 	for _, v := range d.workers {
-		results = append(results, Utilization{
-			Id:                 v.id,
+		results = append(results, WorkerUtilization{
 			PercentUtilization: v.GetPercentUtilization(),
+			Id:                 v.id,
 		})
 	}
 
-	return results
+	return Utilization{
+		PercentUtilization: 100.0 * (1 - float32(d.idlenessIntervals)/float32(d.idlenessQueriedIntervals)),
+		ByWorker:           results,
+	}
 }
 
-// blocks until all workers are idle, then results
+// blocks until all workers are idle, then resumes - typically, use this at the end of your flow to make sure all
+// workers are done before proceeding or exiting
 func (d *Dispatcher) WaitUntilIdle() {
 
 	// allocate a channel
@@ -120,6 +145,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 	<-stopChan
 }
 
+// pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
 func (d *Dispatcher) dispatch() {
 	for {
 		select {
@@ -132,4 +158,24 @@ func (d *Dispatcher) dispatch() {
 			}()
 		}
 	}
+}
+
+// periodically check on the workers to get the runcount - if zero, add to the elapsed time count for "all workers idle"
+func (d *Dispatcher) sample() {
+	ticker := time.NewTicker(d.idlenessSamplerInterval)
+	d.idlenessSamplerStopChannel = make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if d.RunCount() == 0 {
+					d.idlenessIntervals++
+				}
+				d.idlenessQueriedIntervals++
+			case <-d.idlenessSamplerStopChannel:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }

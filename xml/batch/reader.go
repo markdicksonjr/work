@@ -90,6 +90,8 @@ func (a *Reader) Decode(
 	a.dispatcher.WaitUntilIdle()
 
 	utilization := a.dispatcher.GetUtilization()
+	log.Println("the dispatcher had at least 1 worker active for " + strconv.FormatFloat(float64(utilization.PercentUtilization), 'f', 1, 32) + "% of the time")
+
 	for _, u := range utilization.ByWorker {
 		log.Println("worker " + strconv.Itoa(u.Id) + " was active " + strconv.FormatFloat(float64(u.PercentUtilization), 'f', 1, 32) + "% of the time")
 	}

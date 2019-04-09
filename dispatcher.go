@@ -13,7 +13,7 @@ func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, jobErrF
 		jobQueue:                make(chan Job, maxJobQueueSize),
 		maxWorkers:              maxWorkers,
 		workerPool:              make(chan chan Job, maxWorkers),
-		idlenessSamplerInterval: 250 * time.Millisecond,
+		idlenessSamplerInterval: 100 * time.Millisecond,
 	}
 }
 
@@ -128,7 +128,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 	// finish before we proceed through the app
 	go func() {
 		for {
-			time.Sleep(time.Second)
+			time.Sleep(250 * time.Millisecond)
 
 			runCount := d.RunCount()
 

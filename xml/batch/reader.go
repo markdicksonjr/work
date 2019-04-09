@@ -50,9 +50,7 @@ func (a *Reader) Decode(
 	}
 
 	a.reader = workersXml.Reader{}
-	err := a.reader.Open(filename)
-
-	if err != nil {
+	if err := a.reader.Open(filename); err != nil {
 		return err
 	}
 

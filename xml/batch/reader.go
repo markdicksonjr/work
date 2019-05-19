@@ -87,11 +87,15 @@ func (a *Reader) Decode(
 			}
 
 			// infinite loop guard for res.IsEndOfStream not firing
-			if batchCount % 10000 == 0 && processedCount == 0 {
-				if err := a.batch.Flush(); err != nil {
-					return err
+			if batchCount % 10000 == 0 && batchCount > 10000000 {
+				if processedCount == 0 {
+					if err := a.batch.Flush(); err != nil {
+						return err
+					}
+					break
+				} else {
+					processedCount = 0
 				}
-				break
 			}
 		} else {
 

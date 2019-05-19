@@ -67,7 +67,12 @@ func (a *Reader) Decode(
 		if !a.dispatcher.IsJobQueueFull() {
 			res := a.reader.BuildRecordsFromToken(recordsBuilder)
 
-			// if we got records from the token
+			// return any error that occurred
+			if res.Err != nil {
+				return res.Err
+			}
+
+			// if we got records from the token, push them into the batch
 			if res.Records != nil && len(res.Records) > 0 {
 				processedCount += len(res.Records)
 
@@ -86,7 +91,7 @@ func (a *Reader) Decode(
 				break
 			}
 
-			// infinite loop guard for res.IsEndOfStream not firing
+			// infinite loop guard for res.IsEndOfStream not firing TODO: remove this
 			if batchCount % 10000 == 0 && batchCount > 10000000 {
 				if processedCount == 0 {
 					if err := a.batch.Flush(); err != nil {

@@ -13,17 +13,17 @@ import (
 
 // app-specific struct for "Addresses" xml element
 type Addresses struct {
-	XMLName xml.Name	`xml:"addresses"`
-	Address []Address	`xml:"address"`
-	Text	string		`xml:",chardata"`
+	XMLName xml.Name  `xml:"addresses"`
+	Address []Address `xml:"address"`
+	Text    string    `xml:",chardata"`
 }
 
 // app-specific struct for "Address" xml element
 type Address struct {
-	XMLName	xml.Name	`xml:"address"`
-	Text	string		`xml:",chardata"`
-	Name	string		`xml:"name"`
-	Street	string		`xml:"street"`
+	XMLName xml.Name `xml:"address"`
+	Text    string   `xml:",chardata"`
+	Name    string   `xml:"name"`
+	Street  string   `xml:"street"`
 }
 
 // the function that's run by the worker (where the work happens)
@@ -31,8 +31,8 @@ func doWork(job worker.Job) error {
 	log.Println("working")
 
 	if job.Context != nil {
-		record := (job.Context).([]*xmlWorker.Record)
-		log.Println("encountered " + strconv.Itoa(len(record)));
+		record := (job.Context).(xmlWorker.ProcessTokenResult)
+		log.Println("encountered " + strconv.Itoa(len(record.Records)))
 		time.Sleep(time.Second * 3) // mimic a task that takes 3 seconds
 	}
 
@@ -60,7 +60,7 @@ func tokenRecordsBuilderFunction(reader *xmlWorkerBatch.Reader) func(t xml.Token
 					for _, v := range p.Address {
 						records = append(records, &xmlWorker.Record{
 							TypeName: se.Name.Local,
-							Data: v,
+							Data:     v,
 						})
 					}
 					return xmlWorker.RecordsBuilderResult{Records: records}

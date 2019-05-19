@@ -8,18 +8,18 @@ import (
 
 // converts a file to records ((data, error) tuples)
 type Reader struct {
-	xmlFile	*os.File
+	xmlFile *os.File
 	decoder *xml.Decoder
 }
 
 type Record struct {
-	TypeName 	string
-	Data		interface{}
+	TypeName string
+	Data     interface{}
 }
 
 type RecordsBuilderResult struct {
-	Records	[]*Record
-	Err		error
+	Records []*Record
+	Err     error
 }
 
 type ProcessTokenResult struct {
@@ -30,7 +30,7 @@ type ProcessTokenResult struct {
 
 type RecordsBuilderFunction func(xml.Token) RecordsBuilderResult
 
-func RecordArrayFromInterfaceArray(i []interface{}) []*Record {
+func RecordArrayFromInterfaceArray(i []interface{}, isEndOfStream bool) ProcessTokenResult {
 	var records []*Record = nil
 
 	// loop through the whole batch, casting each to the
@@ -40,7 +40,10 @@ func RecordArrayFromInterfaceArray(i []interface{}) []*Record {
 		records = append(records, record)
 	}
 
-	return records
+	return ProcessTokenResult{
+		Records:       records,
+		IsEndOfStream: isEndOfStream,
+	}
 }
 
 func (r *Reader) Open(filename string) error {

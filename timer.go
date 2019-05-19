@@ -3,16 +3,16 @@ package worker
 import "time"
 
 type Timer struct {
-	NoOp bool
+	NoOp       bool
 	startTimes map[string]*time.Time
-	totals map[string]int64
-	counts map[string]int
+	totals     map[string]int64
+	counts     map[string]int
 }
 
 type TimerRecord struct {
-	Count int
+	Count     int
 	TotalTime int64
-	Label string
+	Label     string
 }
 
 func (t *Timer) Start(label string) {
@@ -51,13 +51,13 @@ func (t *Timer) Stop(label string) {
 
 func (t *Timer) GetTimingsForLabel(label string) TimerRecord {
 	return TimerRecord{
-		Count: t.counts[label],
+		Count:     t.counts[label],
 		TotalTime: t.totals[label],
-		Label: label,
+		Label:     label,
 	}
 }
 
-func (t * Timer) GetTimings() []TimerRecord {
+func (t *Timer) GetTimings() []TimerRecord {
 	var result []TimerRecord
 
 	if !t.NoOp {
@@ -65,9 +65,9 @@ func (t * Timer) GetTimings() []TimerRecord {
 			count := t.counts[label]
 
 			result = append(result, TimerRecord{
-				Count: count,
+				Count:     count,
 				TotalTime: timing,
-				Label: label,
+				Label:     label,
 			})
 		}
 	}

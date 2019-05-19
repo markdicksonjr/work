@@ -30,10 +30,10 @@ func (a *Reader) Init(
 	a.jobName = jobName
 	a.batch = &workers.Batch{}
 	a.batch.Init(batchSize, func(i []interface{}) error {
-		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: false})
+		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, false)})
 		return nil
 	}, func(i []interface{}) error {
-		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i), IsEndOfStream: true})
+		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, true)})
 		return nil
 	})
 
@@ -92,7 +92,7 @@ func (a *Reader) Decode(
 			}
 
 			// infinite loop guard for res.IsEndOfStream not firing TODO: remove this
-			if batchCount % 10000 == 0 && batchCount > 10000000 {
+			if batchCount%10000 == 0 && batchCount > 10000000 {
 				if processedCount == 0 {
 					if err := a.batch.Flush(); err != nil {
 						return err

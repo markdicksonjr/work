@@ -59,6 +59,8 @@ func (a *Reader) Decode(
 		}
 	}()
 
+	batchCount := 0
+	processedCount := 0
 	for {
 
 		// if the job queue isn't full, process an XML token
@@ -67,6 +69,8 @@ func (a *Reader) Decode(
 
 			// if we got records from the token
 			if res.Records != nil && len(res.Records) > 0 {
+				processedCount += len(res.Records)
+
 				for _, v := range res.Records {
 					if err := a.batch.Push(v); err != nil {
 						return err
@@ -79,7 +83,15 @@ func (a *Reader) Decode(
 				if err := a.batch.Flush(); err != nil {
 					return err
 				}
-				break;
+				break
+			}
+
+			// infinite loop guard for res.IsEndOfStream not firing
+			if batchCount % 10000 == 0 && processedCount == 0 {
+				if err := a.batch.Flush(); err != nil {
+					return err
+				}
+				break
 			}
 		} else {
 
@@ -87,6 +99,7 @@ func (a *Reader) Decode(
 			log.Println("waiting to read more XML, because the job queue is full")
 			time.Sleep(time.Millisecond * 100)
 		}
+		batchCount++
 	}
 
 	// some jobs may be running still - wait until they're done

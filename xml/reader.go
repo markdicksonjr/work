@@ -56,6 +56,13 @@ func (r *Reader) Open(filename string) error {
 	return nil
 }
 
+func (r *Reader) Close() error {
+	if r.xmlFile != nil {
+		return r.xmlFile.Close()
+	}
+	return nil
+}
+
 func (r *Reader) BuildRecordsFromToken(recordsBuilder RecordsBuilderFunction) ProcessTokenResult {
 
 	// decode a token

@@ -53,6 +53,11 @@ func (a *Reader) Decode(
 	if err := a.reader.Open(filename); err != nil {
 		return err
 	}
+	defer func() {
+		if err := a.reader.Close(); err != nil {
+			log.Println("an error occurred when closing file " + filename + ": " + err.Error())
+		}
+	}()
 
 	for {
 

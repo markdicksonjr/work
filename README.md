@@ -33,7 +33,7 @@ dispatcher.WaitUntilIdle()
 where doWork is something useful, but could be demonstrated with something like:
 
 ```go
-func doWork(job worker.Job) error {
+func doWork(job worker.Job, ctx *worker.Context) error {
 	time.Sleep(time.Second * 3)
 	return nil
 }

@@ -27,7 +27,7 @@ type Address struct {
 }
 
 // the function that's run by the worker (where the work happens)
-func doWork(job worker.Job) error {
+func doWork(job worker.Job, ctx *worker.Context) error {
 	log.Println("working")
 
 	if job.Context != nil {

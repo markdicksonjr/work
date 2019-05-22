@@ -10,15 +10,21 @@ type Job struct {
 	Context interface{}
 }
 
+// provides a mechanism for shared data and context across calls to the work function
+type Context struct {
+	Data interface{}
+}
+
 func NewWorker(id int, workerPool chan chan Job, workFn WorkFunction, jobErrorFn JobErrorFunction, logFn LogFunction) Worker {
 	return Worker{
-		id:         id,
-		jobQueue:   make(chan Job),
-		workerPool: workerPool,
-		quitChan:   make(chan bool),
-		workFn:     workFn,
-		jobErrorFn: jobErrorFn,
-		logFn:      logFn,
+		id:            id,
+		jobQueue:      make(chan Job),
+		workerPool:    workerPool,
+		quitChan:      make(chan bool),
+		workFn:        workFn,
+		jobErrorFn:    jobErrorFn,
+		logFn:         logFn,
+		workerContext: Context{},
 	}
 }
 
@@ -33,6 +39,7 @@ type Worker struct {
 	startTime             time.Time
 	totalProcessingTimeNs int64
 	logFn                 LogFunction
+	workerContext         Context
 }
 
 func (w Worker) GetRunningCount() int32 {
@@ -74,13 +81,13 @@ func (w *Worker) start() {
 				workFnStart := time.Now()
 				atomic.AddInt32(&w.runningCount, 1)
 				_, _ = w.logFn("worker%d: started %s\n", w.id, job.Name)
-				err := w.workFn(job)
+				err := w.workFn(job, &w.workerContext)
 				atomic.AddInt32(&w.runningCount, -1)
 				atomic.AddInt64(&w.totalProcessingTimeNs, time.Now().Sub(workFnStart).Nanoseconds())
 
 				if err != nil {
 					_, _ = w.logFn("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
-					w.jobErrorFn(job, err)
+					w.jobErrorFn(job, &w.workerContext, err)
 				}
 
 				_, _ = w.logFn("worker%d: completed %s!\n", w.id, job.Name)

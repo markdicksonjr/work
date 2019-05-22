@@ -23,7 +23,7 @@ for someCondition {
     dispatcher.BlockWhileQueueFull()
     
     // put the thing on the queue
-    dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &data, IsEndOfStream: isEndOfStream})
+    dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &data})
 }
 
 // let all jobs finish before proceeding

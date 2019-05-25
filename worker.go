@@ -90,6 +90,9 @@ func (w *Worker) start() {
 					w.jobErrorFn(job, &w.workerContext, err)
 				}
 
+				// nil out data to clue GC
+				w.workerContext.Data = nil
+
 				_, _ = w.logFn("worker%d: completed %s!\n", w.id, job.Name)
 			case <-w.quitChan:
 				_, _ = w.logFn("worker%d stopping\n", w.id)

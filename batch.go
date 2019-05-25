@@ -46,6 +46,9 @@ func (b *Batch) Push(record interface{}) error {
 		if err := b.pushHandler(batch); err != nil {
 			return err
 		}
+
+		// dereference batch to clue GC, unless user wants to retain data
+		batch = nil
 	} else {
 		b.itemsToSave[b.batchPosition] = record
 		b.batchPosition++
@@ -63,7 +66,9 @@ func (b *Batch) Flush() error {
 		subSlice := (b.itemsToSave)[0:b.batchPosition]
 		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
 		b.batchPosition = 0
-		return b.flushHandler(subSlice)
+		err := b.flushHandler(subSlice)
+		subSlice = nil
+		return err
 	}
 
 	return nil

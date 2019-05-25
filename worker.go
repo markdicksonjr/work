@@ -92,6 +92,7 @@ func (w *Worker) start() {
 
 				// nil out data to clue GC
 				w.workerContext.Data = nil
+				job.Context = nil
 
 				_, _ = w.logFn("worker%d: completed %s!\n", w.id, job.Name)
 			case <-w.quitChan:

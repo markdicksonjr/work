@@ -149,6 +149,12 @@ func (d *Dispatcher) WaitUntilIdle() {
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
 func (d *Dispatcher) dispatch() {
 	for {
+		
+		// if there are no workers ready to receive the job, let the job queue fill up
+		if int(d.RunCount()) == len(d.workerPool) {
+			continue
+		}
+
 		select {
 		case job := <-d.jobQueue:
 			go func() {

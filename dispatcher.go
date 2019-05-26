@@ -151,7 +151,7 @@ func (d *Dispatcher) dispatch() {
 	for {
 		
 		// if there are no workers ready to receive the job, let the job queue fill up
-		if int(d.RunCount()) == len(d.workerPool) {
+		if int(d.RunCount()) == cap(d.workerPool) {
 			continue
 		}
 

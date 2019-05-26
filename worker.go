@@ -1,4 +1,4 @@
-package worker
+package work
 
 import (
 	"sync/atomic"

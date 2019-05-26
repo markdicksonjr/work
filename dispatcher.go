@@ -1,11 +1,17 @@
-package worker
+package work
 
 import (
 	"sync/atomic"
 	"time"
 )
 
-func NewDispatcher(maxJobQueueSize, maxWorkers int, workFn WorkFunction, jobErrFn JobErrorFunction, logFn LogFunction) *Dispatcher {
+func NewDispatcher(
+	maxJobQueueSize,
+	maxWorkers int,
+	workFn WorkFunction,
+	jobErrFn JobErrorFunction,
+	logFn LogFunction,
+) *Dispatcher {
 	return &Dispatcher{
 		workFn:                  workFn,
 		jobErrorFn:              jobErrFn,

@@ -1,4 +1,4 @@
-# Go-Worker
+# Work (for Go)
 
 A worker pool and batch processing library.  Ships with a few utilities for common use-cases (e.g. XML processing).
 
@@ -9,7 +9,7 @@ A worker pool and batch processing library.  Ships with a few utilities for comm
 // start the dispatcher, using 8 workers and up to 100 queued jobs
 maxWorkers := 8
 maxJobQueueSize := 100
-dispatcher := worker.NewDispatcher(maxJobQueueSize, maxWorkers, doWork, fmt.Printf)
+dispatcher := work.NewDispatcher(maxJobQueueSize, maxWorkers, doWork, fmt.Printf)
 dispatcher.Run()
 
 // do something that loads up the jobs repeatedly (here, we use a for loop)
@@ -23,7 +23,7 @@ for someCondition {
     dispatcher.BlockWhileQueueFull()
     
     // put the thing on the queue
-    dispatcher.EnqueueJob(worker.Job{Name: "address processing", Context: &data})
+    dispatcher.EnqueueJob(work.Job{Name: "address processing", Context: &data})
 }
 
 // let all jobs finish before proceeding
@@ -33,7 +33,7 @@ dispatcher.WaitUntilIdle()
 where doWork is something useful, but could be demonstrated with something like:
 
 ```go
-func doWork(job worker.Job, ctx *worker.Context) error {
+func doWork(job work.Job, ctx *work.Context) error {
 	time.Sleep(time.Second * 3)
 	return nil
 }
@@ -58,7 +58,7 @@ A general-use batching mechanism exists in this library.  Any time you need to a
 at a time) and process them as a big group, this will be a handy utility.  A simple usage example:
 
 ```go
-batch := &worker.Batch{}
+batch := &work.Batch{}
 batch.Init(a.BatchSize, onPush, onFlush)
 
 ...
@@ -119,4 +119,4 @@ timer.
 
 The dispatcher uses round-robin dispatching.
 
-worker.NoLogFunction (instead of fmt.Printf in the example above) is available in the event output is not desired.
+work.NoLogFunction (instead of fmt.Printf in the example above) is available in the event output is not desired.

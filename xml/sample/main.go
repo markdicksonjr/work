@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/xml"
 	"flag"
-	"github.com/markdicksonjr/go-worker"
-	xmlWorker "github.com/markdicksonjr/go-worker/xml"
-	xmlWorkerBatch "github.com/markdicksonjr/go-worker/xml/batch"
+	"github.com/markdicksonjr/work"
+	xmlWorker "github.com/markdicksonjr/work/xml"
+	xmlWorkerBatch "github.com/markdicksonjr/work/xml/batch"
 	"log"
 	"strconv"
 	"time"
@@ -27,7 +27,7 @@ type Address struct {
 }
 
 // the function that's run by the worker (where the work happens)
-func doWork(job worker.Job, ctx *worker.Context) error {
+func doWork(job work.Job, ctx *work.Context) error {
 	log.Println("working")
 
 	if job.Context != nil {
@@ -95,7 +95,7 @@ func main() {
 
 	// allocate the XML batch reader
 	reader := xmlWorkerBatch.Reader{}
-	reader.Init("address processing", *maxQueueSize, *maxWorkers, *maxBatchSize, doWork, worker.JobErrorsFatalLogFunction, worker.NoLogFunction) // fmt.Printf is also a good alternative
+	reader.Init("address processing", *maxQueueSize, *maxWorkers, *maxBatchSize, doWork, work.JobErrorsFatalLogFunction, work.NoLogFunction) // fmt.Printf is also a good alternative
 
 	// start decoding
 	if err := reader.Decode("test.xml", tokenRecordsBuilderFunction(&reader)); err != nil {

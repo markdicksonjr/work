@@ -3,8 +3,8 @@ package batch
 import (
 	"encoding/xml"
 	"errors"
-	workers "github.com/markdicksonjr/go-worker"
-	workersXml "github.com/markdicksonjr/go-worker/xml"
+	workers "github.com/markdicksonjr/work"
+	workersXml "github.com/markdicksonjr/work/xml"
 	"log"
 	"strconv"
 	"time"

@@ -1,3 +1,3 @@
-module github.com/markdicksonjr/go-worker
+module github.com/markdicksonjr/work
 
 go 1.12

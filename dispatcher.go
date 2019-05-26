@@ -135,6 +135,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 			// now that nothing is left, write to the stop channel
 			if runCount == 0 {
 				stopChan <- true
+				return
 			} else {
 				_, _ = d.logFn("queued all jobs, but still running %d of them\n", runCount)
 			}

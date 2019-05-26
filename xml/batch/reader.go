@@ -30,10 +30,10 @@ func (a *Reader) Init(
 	a.jobName = jobName
 	a.batch = &workers.Batch{}
 	a.batch.Init(batchSize, func(i []interface{}) error {
-		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, false)})
+		a.dispatcher.EnqueueJobAllowWait(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, false)})
 		return nil
 	}, func(i []interface{}) error {
-		a.dispatcher.EnqueueJob(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, true)})
+		a.dispatcher.EnqueueJobAllowWait(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, true)})
 		return nil
 	})
 

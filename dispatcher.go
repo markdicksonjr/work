@@ -69,7 +69,15 @@ func (d *Dispatcher) RunCount() int32 {
 }
 
 // allows users to enqueue jobs into the work queue
-func (d *Dispatcher) EnqueueJob(job Job) {
+func (d *Dispatcher) EnqueueJobAllowWait(job Job) {
+	if blocked := d.BlockWhileQueueFull(); blocked {
+		_, _ = d.logFn("blocked during enqueue because queue full")
+	}
+	d.jobQueue <- job
+}
+
+func (d *Dispatcher) EnqueueJobAllowDrop(job Job) {
+	// TODO COUNT DROPS?
 	d.jobQueue <- job
 }
 
@@ -149,11 +157,14 @@ func (d *Dispatcher) WaitUntilIdle() {
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
 func (d *Dispatcher) dispatch() {
 	for {
-		
+
 		// if there are no workers ready to receive the job, let the job queue fill up
-		if int(d.RunCount()) == cap(d.workerPool) {
+		if !d.IsAnyWorkerIdle() {
+			time.Sleep(30 * time.Millisecond)
 			continue
 		}
+
+		_, _ = d.logFn("during round-robin enqueueing: %d running vs %d total\n", int(d.RunCount()), cap(d.workerPool))
 
 		select {
 		case job := <-d.jobQueue:
@@ -185,4 +196,8 @@ func (d *Dispatcher) sample() {
 			}
 		}
 	}()
+}
+
+func (d *Dispatcher) IsAnyWorkerIdle() bool {
+	return int(d.RunCount()) < cap(d.workerPool)
 }

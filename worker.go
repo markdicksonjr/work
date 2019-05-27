@@ -80,22 +80,22 @@ func (w *Worker) start() {
 			case job := <-w.jobQueue:
 				workFnStart := time.Now()
 				atomic.AddInt32(&w.runningCount, 1)
-				_, _ = w.logFn("worker%d: started %s\n", w.id, job.Name)
+				_, _ = w.log("worker%d: started %s\n", w.id, job.Name)
 				err := w.workFn(job, &w.workerContext)
 				atomic.AddInt32(&w.runningCount, -1)
 				atomic.AddInt64(&w.totalProcessingTimeNs, time.Now().Sub(workFnStart).Nanoseconds())
 
 				if err != nil {
-					_, _ = w.logFn("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
-					w.jobErrorFn(job, &w.workerContext, err)
+					_, _ = w.log("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
+					w.error(job, &w.workerContext, err)
 				}
 
 				// nil out data to clue GC
 				job.Context = nil
 
-				_, _ = w.logFn("worker%d: completed %s!\n", w.id, job.Name)
+				_, _ = w.log("worker%d: completed %s!\n", w.id, job.Name)
 			case <-w.quitChan:
-				_, _ = w.logFn("worker%d stopping\n", w.id)
+				_, _ = w.log("worker%d stopping\n", w.id)
 				return
 			}
 		}
@@ -106,4 +106,19 @@ func (w Worker) stop() {
 	go func() {
 		w.quitChan <- true
 	}()
+}
+
+
+func (w Worker) log(format string, a ...interface{}) (n int, err error) {
+	if w.logFn != nil {
+		return w.logFn(format, a)
+	}
+
+	return 0, nil
+}
+
+func (w Worker) error(job Job, workerContext *Context, err error) {
+	if w.jobErrorFn != nil {
+		w.jobErrorFn(job, workerContext, err)
+	}
 }

@@ -9,28 +9,14 @@ func NewDispatcher(
 	maxJobQueueSize,
 	maxWorkers int,
 	workFn WorkFunction,
-	jobErrFn JobErrorFunction,
-	logFn LogFunction,
 ) *Dispatcher {
 	return &Dispatcher{
-		workFn:                  workFn,
-		jobErrorFn:              jobErrFn,
-		logFn:                   logFn,
+		idlenessSamplerInterval: 100 * time.Millisecond,
 		jobQueue:                make(chan Job, maxJobQueueSize),
 		maxWorkers:              maxWorkers,
 		workerPool:              make(chan chan Job, maxWorkers),
-		idlenessSamplerInterval: 100 * time.Millisecond,
+		workFn:                  workFn,
 	}
-}
-
-type Utilization struct {
-	ByWorker           []WorkerUtilization
-	PercentUtilization float32
-}
-
-type WorkerUtilization struct {
-	PercentUtilization float32
-	Id                 int
 }
 
 type Dispatcher struct {
@@ -74,10 +60,20 @@ func (d *Dispatcher) RunCount() int32 {
 	return total
 }
 
+func (d *Dispatcher) WithLogger(logFn LogFunction) *Dispatcher {
+	d.logFn = logFn
+	return d
+}
+
+func (d *Dispatcher) WithJobErrFn(jobErrFn JobErrorFunction) *Dispatcher {
+	d.jobErrorFn = jobErrFn
+	return d
+}
+
 // allows users to enqueue jobs into the work queue
 func (d *Dispatcher) EnqueueJobAllowWait(job Job) {
 	if blocked := d.BlockWhileQueueFull(); blocked {
-		_, _ = d.logFn("blocked during enqueue because queue full")
+		_, _ = d.log("blocked during enqueue because queue full")
 	}
 	d.jobQueue <- job
 }
@@ -151,13 +147,21 @@ func (d *Dispatcher) WaitUntilIdle() {
 				stopChan <- true
 				return
 			} else {
-				_, _ = d.logFn("queued all jobs, but still running %d of them\n", runCount)
+				_, _ = d.log("queued all jobs, but still running %d of them\n", runCount)
 			}
 		}
 	}()
 
 	// block until stop channel written
 	<-stopChan
+}
+
+func (d *Dispatcher) log(format string, a ...interface{}) (n int, err error) {
+	if d.logFn != nil {
+		return d.logFn(format, a)
+	}
+
+	return 0, nil
 }
 
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
@@ -170,14 +174,14 @@ func (d *Dispatcher) dispatch() {
 			continue
 		}
 
-		_, _ = d.logFn("during round-robin enqueueing: %d running vs %d total\n", int(d.RunCount()), cap(d.workerPool))
+		_, _ = d.log("during round-robin enqueueing: %d running vs %d total\n", int(d.RunCount()), cap(d.workerPool))
 
 		select {
 		case job := <-d.jobQueue:
 			go func() {
-				_, _ = d.logFn("fetching workerJobQueue for: %s\n", job.Name)
+				_, _ = d.log("fetching workerJobQueue for: %s\n", job.Name)
 				workerJobQueue := <-d.workerPool
-				_, _ = d.logFn("adding %s to workerJobQueue\n", job.Name)
+				_, _ = d.log("adding %s to workerJobQueue\n", job.Name)
 				workerJobQueue <- job
 			}()
 		}

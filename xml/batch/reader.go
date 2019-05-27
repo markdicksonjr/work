@@ -37,7 +37,9 @@ func (a *Reader) Init(
 		return nil
 	})
 
-	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn, jobErrFn, logFn)
+	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn).
+		WithJobErrFn(jobErrFn).
+		WithLogger(logFn)
 	a.dispatcher.Run()
 }
 

@@ -41,7 +41,8 @@ func (b *Batch) Push(record interface{}) error {
 	// allocate the buffer of items to save, if needed
 	if b.itemsToSave == nil {
 		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
-		b.batchPosition = 0
+		b.itemsToSave[0] = record
+		b.batchPosition = 1
 		b.mutex.Unlock()
 	} else if b.batchPosition >= b.batchSize {
 		batch := b.itemsToSave

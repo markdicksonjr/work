@@ -1,12 +1,26 @@
 package work
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type Timer struct {
 	NoOp       bool
 	startTimes map[string]*time.Time
 	totals     map[string]int64
 	counts     map[string]int
+	mapMutex   *sync.Mutex
+}
+
+func NewTimer() *Timer {
+	return &Timer{
+		NoOp: false,
+		startTimes: make(map[string]*time.Time),
+		totals: make(map[string]int64),
+		counts: make(map[string]int),
+		mapMutex: &sync.Mutex{},
+	}
 }
 
 type TimerRecord struct {
@@ -20,20 +34,10 @@ func (t *Timer) Start(label string) {
 		return
 	}
 
-	if t.startTimes == nil {
-		t.startTimes = make(map[string]*time.Time)
-	}
-
-	if t.totals == nil {
-		t.totals = make(map[string]int64)
-	}
-
-	if t.counts == nil {
-		t.counts = make(map[string]int)
-	}
-
+	t.mapMutex.Lock()
 	now := time.Now()
 	t.startTimes[label] = &now
+	t.mapMutex.Unlock()
 }
 
 func (t *Timer) Stop(label string) {
@@ -41,26 +45,32 @@ func (t *Timer) Stop(label string) {
 		return
 	}
 
+	t.mapMutex.Lock()
 	start := t.startTimes[label]
 	if start != nil {
 		timing := time.Now().Sub(*start).Nanoseconds()
 		t.totals[label] += timing
 		t.counts[label]++
 	}
+	t.mapMutex.Unlock()
 }
 
 func (t *Timer) GetTimingsForLabel(label string) TimerRecord {
-	return TimerRecord{
+	t.mapMutex.Lock()
+	result := TimerRecord{
 		Count:     t.counts[label],
 		TotalTime: t.totals[label],
 		Label:     label,
 	}
+	t.mapMutex.Unlock()
+	return result
 }
 
 func (t *Timer) GetTimings() []TimerRecord {
 	var result []TimerRecord
 
 	if !t.NoOp {
+		t.mapMutex.Lock()
 		for label, timing := range t.totals {
 			count := t.counts[label]
 
@@ -70,6 +80,7 @@ func (t *Timer) GetTimings() []TimerRecord {
 				Label:     label,
 			})
 		}
+		t.mapMutex.Unlock()
 	}
 
 	return result

@@ -100,6 +100,8 @@ A sample integration of Batch and and XML Reader is provided in ./xml/sample.
 
 ### Simple Timer
 
+To create a timer, call `NewTimer()` (optionally, you can set timer.NoOp to disable the timer processing (if not debugging, etc).
+
 To use the timer, call `timer.Start("SomeTitle")` where SomeTitle describes the operation that is
 being timed.  When complete, call `timer.Stop("SomeTitle")` where SomeTitle is the same operation
 description used for the corresponding timer Start.

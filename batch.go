@@ -14,6 +14,15 @@ type Batch struct {
 	mutex         *sync.Mutex
 }
 
+// convenience interface - not used directly by this module
+type BatchSource interface {
+
+	// given the batch and some context about where in the whole set
+	GetBatches(
+		onBatch func(batch []interface{}, batchIndex, batchSize, totalItemCount int) error,
+	) error
+}
+
 type BatchHandler func([]interface{}) error
 
 func (b *Batch) Init(batchSize int, pushHandler BatchHandler, flushHandler BatchHandler) {

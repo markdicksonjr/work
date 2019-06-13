@@ -16,17 +16,22 @@ func NewDispatcher(
 		maxWorkers:              maxWorkers,
 		workerPool:              make(chan chan Job, maxWorkers),
 		workFn:                  workFn,
+		dispatchLogFn:           NoLogFunction,
+		workerLogFn:             NoLogFunction,
+		waitLogFn:               NoLogFunction,
 	}
 }
 
 type Dispatcher struct {
-	workerPool chan chan Job
-	maxWorkers int
-	jobQueue   chan Job
-	logFn      LogFunction
-	jobErrorFn JobErrorFunction
-	workFn     WorkFunction
-	workers    []*Worker
+	workerPool    chan chan Job
+	maxWorkers    int
+	jobQueue      chan Job
+	workerLogFn   LogFunction
+	waitLogFn     LogFunction
+	dispatchLogFn LogFunction
+	jobErrorFn    JobErrorFunction
+	workFn        WorkFunction
+	workers       []*Worker
 
 	// idleness sampler properties
 	idlenessSamplerStopChannel chan bool
@@ -39,7 +44,7 @@ type Dispatcher struct {
 // note that this will in no way block the app from proceeding
 func (d *Dispatcher) Run() {
 	for i := 0; i < d.maxWorkers; i++ {
-		worker := NewWorker(i+1, d.workerPool, d.workFn, d.jobErrorFn, d.logFn)
+		worker := NewWorker(i+1, d.workerPool, d.workFn, d.jobErrorFn, d.workerLogFn)
 		d.workers = append(d.workers, &worker)
 		worker.start()
 	}
@@ -60,8 +65,18 @@ func (d *Dispatcher) RunCount() int32 {
 	return total
 }
 
-func (d *Dispatcher) WithLogger(logFn LogFunction) *Dispatcher {
-	d.logFn = logFn
+func (d *Dispatcher) WithWorkerLogger(logFn LogFunction) *Dispatcher {
+	d.workerLogFn = logFn
+	return d
+}
+
+func (d *Dispatcher) WithDispatchLogger(logFn LogFunction) *Dispatcher {
+	d.dispatchLogFn = logFn
+	return d
+}
+
+func (d *Dispatcher) WithWaitLogger(logFn LogFunction) *Dispatcher {
+	d.waitLogFn = logFn
 	return d
 }
 
@@ -98,6 +113,7 @@ func (d *Dispatcher) BlockWhileQueueFull() bool {
 
 		go func() {
 			for d.IsJobQueueFull() {
+				_, _ = d.waitLogFn("blocking due to full work queue")
 				didBlock = true
 				time.Sleep(time.Millisecond * 100)
 			}
@@ -147,7 +163,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 				stopChan <- true
 				return
 			} else {
-				_, _ = d.log("queued all jobs, but still running %d of them\n", runCount)
+				_, _ = d.waitLogFn("queued all jobs, but still running %d of them\n", runCount)
 			}
 		}
 	}()
@@ -157,11 +173,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 }
 
 func (d *Dispatcher) log(format string, a ...interface{}) (n int, err error) {
-	if d.logFn != nil {
-		return d.logFn(format, a)
-	}
-
-	return 0, nil
+	return d.dispatchLogFn(format, a)
 }
 
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic

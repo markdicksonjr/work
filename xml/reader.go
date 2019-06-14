@@ -2,6 +2,7 @@ package xml
 
 import (
 	"encoding/xml"
+	"golang.org/x/net/html/charset"
 	"io"
 	"os"
 )
@@ -55,6 +56,7 @@ func (r *Reader) Open(filename string) error {
 	}
 
 	r.decoder = xml.NewDecoder(r.xmlFile)
+	r.decoder.CharsetReader = charset.NewReaderLabel
 
 	return nil
 }

@@ -17,3 +17,18 @@ func JobErrorsIgnoreFunction(job Job, err error) {
 func JobErrorsFatalLogFunction(job Job, workerContext *Context, err error) {
 	log.Fatal("job " + job.Name + " encounted fatal error: " + err.Error())
 }
+
+// MutexFunction is a function that will only ever be run at most once at any given time
+type MutexFunction struct {
+	dispatcher *Dispatcher
+}
+
+func NewMutexFunction(handler func(data interface{}) error) *MutexFunction {
+	s := MutexFunction{
+		dispatcher: NewDispatcher(1, 1, func(job Job, workerContext *Context) error {
+			return handler(job.Context)
+		}),
+	}
+	s.dispatcher.Run()
+	return &s
+}

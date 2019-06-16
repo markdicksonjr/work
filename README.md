@@ -94,6 +94,10 @@ A flush handler is basically the same thing as the push handler, except it shoul
 state your app may have, and it will contain less than a full batch of records.  In most cases, the same function can be 
 passed for both arguments.
 
+### MutexFunction
+
+A function that will only ever be run at most once at any given time.
+
 ### XML
 
 A sample integration of Batch and and XML Reader is provided in ./xml/sample.

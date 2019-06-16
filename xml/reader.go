@@ -31,14 +31,13 @@ type ProcessTokenResult struct {
 
 type RecordsBuilderFunction func(xml.Token) RecordsBuilderResult
 
-func RecordArrayFromInterfaceArray(i []interface{}, isEndOfStream bool) ProcessTokenResult {
-	var records []*Record = nil
+func RecordArrayFromInterfaceArray(batch []interface{}, isEndOfStream bool) ProcessTokenResult {
+	var records = make([]*Record, len(batch))
 
 	// loop through the whole batch, casting each to the
 	// correct type from interface{}
-	for _, item := range i {
-		record := item.(*Record)
-		records = append(records, record)
+	for i, item := range batch {
+		records[i] = item.(*Record)
 	}
 
 	return ProcessTokenResult{
@@ -49,9 +48,7 @@ func RecordArrayFromInterfaceArray(i []interface{}, isEndOfStream bool) ProcessT
 
 func (r *Reader) Open(filename string) error {
 	var err error
-	r.xmlFile, err = os.Open(filename)
-
-	if err != nil {
+	if r.xmlFile, err = os.Open(filename); err != nil {
 		return err
 	}
 

@@ -9,7 +9,7 @@ A worker pool and batch processing library.  Ships with a few utilities for comm
 // start the dispatcher, using 8 workers and up to 100 queued jobs
 maxWorkers := 8
 maxJobQueueSize := 100
-dispatcher := work.NewDispatcher(maxJobQueueSize, maxWorkers, doWork, fmt.Printf)
+dispatcher := work.NewDispatcher(maxJobQueueSize, maxWorkers, doWork)
 dispatcher.Run()
 
 // do something that loads up the jobs repeatedly (here, we use a for loop)
@@ -58,7 +58,7 @@ A general-use batching mechanism exists in this library.  Any time you need to a
 at a time) and process them as a big group, this will be a handy utility.  A simple usage example:
 
 ```go
-batch := &work.Batch{}
+batch := work.Batch{}
 batch.Init(a.BatchSize, onPush, onFlush)
 
 ...

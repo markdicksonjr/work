@@ -44,3 +44,7 @@ func (m *MutexFunction) Call(data interface{}) error {
 	})
 	return nil
 }
+
+func (m *MutexFunction) WaitUntilIdle() {
+	m.dispatcher.WaitUntilIdle()
+}

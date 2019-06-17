@@ -23,12 +23,24 @@ type MutexFunction struct {
 	dispatcher *Dispatcher
 }
 
-func NewMutexFunction(handler func(data interface{}) error) *MutexFunction {
+func NewMutexFunction(
+	handler func(data interface{}) error,
+	errFn func(interface{}, error),
+) *MutexFunction {
 	s := MutexFunction{
 		dispatcher: NewDispatcher(1, 1, func(job Job, workerContext *Context) error {
 			return handler(job.Context)
+		}).WithJobErrFn(func(job Job, workerContext *Context, err error) {
+			errFn(job.Context, err)
 		}),
 	}
 	s.dispatcher.Run()
 	return &s
+}
+
+func (m *MutexFunction) Call(data interface{}) error {
+	m.dispatcher.EnqueueJobAllowWait(Job{
+		Context: data,
+	})
+	return nil
 }

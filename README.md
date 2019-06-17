@@ -1,6 +1,7 @@
 # Work (for Go)
 
-A worker pool and batch processing library.  Ships with a few utilities for common use-cases (e.g. XML processing).
+A worker pool and batch processing library.  Ships with a few utilities for common use-cases (e.g. XML processing, 
+splitting inputs, ensuring a single writer at a time for file output).
 
 ## Job Queue Usage
 
@@ -19,11 +20,8 @@ for someCondition {
     // do some task to get something to put on the queue
     data, isEndOfStream, err := BogusDataSource(...)
     
-    // ensure the queue doesn't drop the item
-    dispatcher.BlockWhileQueueFull()
-    
-    // put the thing on the queue
-    dispatcher.EnqueueJob(work.Job{Name: "address processing", Context: &data})
+    // put the thing on the queue, wait if the queue is full
+    dispatcher.EnqueueJobAllowWait(work.Job{Name: "address processing", Context: &data})
 }
 
 // let all jobs finish before proceeding
@@ -96,7 +94,8 @@ passed for both arguments.
 
 ### MutexFunction
 
-A function that will only ever be run at most once at any given time.
+A function that will be run asynchronously, but at most once at any given time.  Don't forget to call WaitUntilIdle at 
+the end of processing.
 
 ### XML
 

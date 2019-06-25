@@ -1,27 +1,43 @@
 # Work (for Go)
 
-A worker pool and batch processing library.  Ships with a few utilities for common use-cases (e.g. XML processing, 
+A worker pool and batch processing library.  Worker pools provide a simple mechanism for
+parallel processing. The batch utility provides a mechanism for collecting
+individual records until a size threshold is hit (or it is flushed).  Once the batch
+is cleared, some function is applied to the collection.
+
+This library also ships with a few utilities for common use-cases (e.g. XML processing, 
 splitting inputs, ensuring a single writer at a time for file output).
+
+## Data Processing Patterns
+
+### Scrolled Input, Split Processing, Single Unordered Output
+
+Examples: Process a (large?) chunk of an Elastic Search index to perform some sort of transformation, save transformed
+documents to another index
+
+### Scrolled Input, Split Processing, Single Ordered Output
+
+Examples: Process a (large?) chunk of an Elastic Search index in a specific order to perform some sort of transformation, 
+write results to a file in the correct order.
 
 ## Job Queue Usage
 
 ```go
 
-// start the dispatcher, using 8 workers and up to 100 queued jobs
+// start the dispatcher, using 8 parallel workers and up to 100 queued jobs
 maxWorkers := 8
 maxJobQueueSize := 100
 dispatcher := work.NewDispatcher(maxJobQueueSize, maxWorkers, doWork)
-dispatcher.Run()
 
 // do something that loads up the jobs repeatedly (here, we use a for loop)
 // for example, until EOF is reached while reading a file
 for someCondition {
 	
     // do some task to get something to put on the queue
-    data, isEndOfStream, err := BogusDataSource(...)
+    ...
     
     // put the thing on the queue, wait if the queue is full
-    dispatcher.EnqueueJobAllowWait(work.Job{Name: "address processing", Context: &data})
+    dispatcher.EnqueueJobAllowWait(work.Job{Context: &data})
 }
 
 // let all jobs finish before proceeding

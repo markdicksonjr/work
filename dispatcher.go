@@ -10,7 +10,7 @@ func NewDispatcher(
 	maxWorkers int,
 	workFn WorkFunction,
 ) *Dispatcher {
-	return &Dispatcher{
+	d := &Dispatcher{
 		idlenessSamplerInterval: 100 * time.Millisecond,
 		jobQueue:                make(chan Job, maxJobQueueSize),
 		maxWorkers:              maxWorkers,
@@ -20,6 +20,8 @@ func NewDispatcher(
 		workerLogFn:             NoLogFunction,
 		waitLogFn:               NoLogFunction,
 	}
+	d.run()
+	return d
 }
 
 type Dispatcher struct {
@@ -40,12 +42,15 @@ type Dispatcher struct {
 	idlenessIntervals          int64
 }
 
-// start the dispatcher
-// note that this will in no way block the app from proceeding
-func (d *Dispatcher) Run() {
+func (d *Dispatcher) run() {
+	if len(d.workers) == 0 {
+		return
+	}
+
+	d.workers = make([]*Worker, d.maxWorkers)
 	for i := 0; i < d.maxWorkers; i++ {
 		worker := NewWorker(i+1, d.workerPool, d.workFn, d.jobErrorFn, d.workerLogFn)
-		d.workers = append(d.workers, &worker)
+		d.workers[i] = &worker
 		worker.start()
 	}
 

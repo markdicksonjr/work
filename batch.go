@@ -93,7 +93,7 @@ func (b *Batch) Flush() error {
 
 	// lock around batch processing
 	b.mutex.Lock()
-	if len(b.itemsToSave) > 0 {
+	if b.batchPosition > 0 {
 
 		// snag the rest of the buffer as a slice, reset buffer
 		subSlice := (b.itemsToSave)[0:b.batchPosition]

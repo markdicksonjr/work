@@ -34,7 +34,6 @@ func NewMutexFunction(
 			errFn(job.Context, err)
 		}),
 	}
-	s.dispatcher.Run()
 	return &s
 }
 

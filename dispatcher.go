@@ -43,7 +43,7 @@ type Dispatcher struct {
 }
 
 func (d *Dispatcher) run() {
-	if len(d.workers) == 0 {
+	if len(d.workers) > 0 {
 		return
 	}
 

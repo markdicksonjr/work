@@ -17,9 +17,20 @@ type Batch struct {
 // convenience interface - not used directly by this module
 type BatchSource interface {
 
-	// given the batch and some context about where in the whole set
+	// when the caller wants to process slices of data
+	// gives the batch and some context about where in the whole set
 	GetBatches(
 		onBatch func(batch []interface{}, batchIndex, batchSize, totalItemCount int) error,
+	) error
+}
+
+// convenience interface - not used directly by this module
+type BytesSource interface {
+
+	// when the caller wants to process bytes of data per batch
+	// gives the batch and some context about where in the whole set
+	GetBatches(
+		onBatch func(bytes []byte, batchIndex, batchSize, totalItemCount int) error,
 	) error
 }
 

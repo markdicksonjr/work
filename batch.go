@@ -75,6 +75,7 @@ func (b *Batch) Push(record interface{}) error {
 		// release the lock
 		b.mutex.Unlock()
 
+		// TODO: review impact of making this call from a goroutine - definitely faster, but would bugs arise from timing changes?
 		if err := b.pushHandler(batch); err != nil {
 			return err
 		}

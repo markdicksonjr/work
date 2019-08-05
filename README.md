@@ -1,24 +1,36 @@
 # Work (for Go)
 
-A worker pool and batch processing library.  Worker pools provide a simple mechanism for
-parallel processing. The batch utility provides a mechanism for collecting
-individual records until a size threshold is hit (or it is flushed).  Once the batch
-is cleared, some function is applied to the collection.
+A worker pool and batch processing library.  
 
-This library also ships with a few utilities for common use-cases (e.g. XML processing, 
-splitting inputs, ensuring a single writer at a time for file output).
+Worker pools (called "Dispatchers" by this library) provide a simple mechanism for parallel processing. 
+
+Batch is a structure that provides a mechanism for collecting individual records until a size threshold is hit (or it is 
+flushed).  Once the batch is cleared, some function is applied to the collection.  Batch is a thread-safe collection.
+
+MutexFunction can be thought of as a function that runs in the background on input data when provided.  It is named for
+the fact that it's implemented as a worker pool with a single worker.  The same thing could be implemented with goroutines
+and channels, but this allows for simpler code, a valuable result for what will certainly be complex code if you're
+looking into using concurrency to begin with.
+
+This library additionally ships with a few utilities for common use-cases (e.g. XML processing), as well as some simple 
+interfaces that might be commonly used in concurrent processing (e.g. BatchSource, BytesSource).
 
 ## Data Processing Patterns
 
 ### Scrolled Input, Split Processing, Single Unordered Output
 
 Examples: Process a (large?) chunk of an Elastic Search index to perform some sort of transformation, save transformed
-documents to another index
+documents to another index.
 
 ### Scrolled Input, Split Processing, Single Ordered Output
 
 Examples: Process a (large?) chunk of an Elastic Search index in a specific order to perform some sort of transformation, 
-write results to a file in the correct order.
+write results to a file in the correct order.  
+
+Since we don't want the file writes to happen concurrently, we use MutexFunction to let the writes happen asynchronously, 
+but with only one write affecting the file at a time
+
+This is implemented by setting up a worker pool to do processing in which each worker pushes results into a batch.
 
 ## Job Queue Usage
 
@@ -55,14 +67,14 @@ func doWork(job work.Job, ctx *work.Context) error {
 
 dispatcher.WaitUntilIdle() at the end of the first code block of the usage section will
 wait until the workers are all waiting for work.  If any worker is occupied, the app will continue.  This
-line is optional.  It's conceivable many apps will want to constantly operate the worker pool. No mechanism
+line is optional.  It's conceivable many apps will want to constantly operate the worker pool. No other mechanism
 to keep the app running indefinitely is provided in this library, as it's pretty easy with core Go to do 
 (channels among other things, make this particularly trivial).
 
-Another consideration is the case where Jobs get enqueued too quickly for the job queue.  One
-strategy to use for this is to call Dispatcher.IsJobQueueFull to see if the job queue is full before inserting a job.
-If it's full, the app should wait a bit and check again until there's space in the job queue.  An
-example of this can be found in ./xml/batch/reader.go.
+Another consideration is the case where Jobs get enqueued too quickly for the job queue.  The two recommended strategies
+are to either use EnqueueJobAllowWait or EnqueueJobAllowDrop to see if the job queue is full before inserting a job.  In the
+case of EnqueueJobAllowWait, it will block execution until a worker is available, while EnqueueJobAllowDrop will just
+move along with processing without enqueueing the work.  If all data must be reliably processed, use EnqueueJobAllowWait.
 
 ## Utilities
 

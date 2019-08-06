@@ -40,7 +40,6 @@ func (a *Reader) Init(
 	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn).
 		WithJobErrFn(jobErrFn).
 		WithWorkerLogger(logFn)
-	a.dispatcher.Run()
 }
 
 func (a *Reader) Decode(

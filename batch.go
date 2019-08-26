@@ -24,6 +24,13 @@ type BatchSource interface {
 	) error
 }
 
+
+// convenience interface - not used directly by this module
+type BatchDestination interface {
+	PutBatch([]interface{}) error
+	Finalize() error
+}
+
 // convenience interface - not used directly by this module
 type BytesSource interface {
 
@@ -32,6 +39,12 @@ type BytesSource interface {
 	GetBatches(
 		onBatch func(bytes []byte, batchIndex, batchSize, totalItemCount int) error,
 	) error
+}
+
+// convenience interface - not used directly by this module
+type BytesDestination interface {
+	PutBytes([]byte) error
+	Finalize() error
 }
 
 type BatchHandler func([]interface{}) error

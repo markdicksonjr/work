@@ -41,11 +41,7 @@ type BytesSource interface {
 	) error
 }
 
-// convenience interface - not used directly by this module
-type BytesDestination interface {
-	PutBytes([]byte) error
-	Finalize() error
-}
+// note: io.WriteCloser makes a convenient alternative to "BytesDestination"
 
 type BatchHandler func([]interface{}) error
 

@@ -93,6 +93,14 @@ batch.Init(a.BatchSize, onPush, onFlush)
 if err := batch.Push(item); err != nil {
     return err
 }
+
+...
+
+// flush anything remaining in the batch
+if err := a.batch.Flush(); err != nil {
+    return err
+}
+
 ```
 
 Where the push handler (called when a batch is large enough to dequeue, or is flushed) might look something like:

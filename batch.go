@@ -16,7 +16,6 @@ type Batch struct {
 
 // convenience interface - not used directly by this module
 type BatchSource interface {
-
 	// when the caller wants to process slices of data
 	// gives the batch and some context about where in the whole set
 	GetBatches(
@@ -24,6 +23,8 @@ type BatchSource interface {
 	) error
 }
 
+// convenience interface - not used directly by this module
+type BatchSourceFactory func() BatchSource
 
 // convenience interface - not used directly by this module
 type BatchDestination interface {
@@ -33,7 +34,6 @@ type BatchDestination interface {
 
 // convenience interface - not used directly by this module
 type BytesSource interface {
-
 	// when the caller wants to process bytes of data per batch
 	// gives the batch and some context about where in the whole set
 	GetBatches(

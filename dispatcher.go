@@ -87,7 +87,7 @@ func (d *Dispatcher) WithWaitLogger(logFn LogFunction) *Dispatcher {
 
 func (d *Dispatcher) WithJobErrFn(jobErrFn JobErrorFunction) *Dispatcher {
 	d.jobErrorFn = jobErrFn
-	
+
 	for _, v := range d.workers {
 		v.jobErrorFn = d.jobErrorFn
 	}

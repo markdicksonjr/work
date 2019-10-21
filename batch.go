@@ -45,7 +45,7 @@ type BytesSource interface {
 
 type BatchHandler func([]interface{}) error
 
-func (b *Batch) Init(batchSize int, pushHandler BatchHandler, flushHandler BatchHandler) {
+func (b *Batch) Init(batchSize int, pushHandler BatchHandler, flushHandler ...BatchHandler) {
 	b.batchPosition = 0
 
 	// grab the batch size - default to 100
@@ -55,7 +55,12 @@ func (b *Batch) Init(batchSize int, pushHandler BatchHandler, flushHandler Batch
 	}
 
 	b.pushHandler = pushHandler
-	b.flushHandler = flushHandler
+	b.flushHandler = pushHandler
+
+	if len(flushHandler) > 0 {
+		b.flushHandler = flushHandler[0]
+	}
+
 	b.mutex = &sync.Mutex{}
 }
 

@@ -75,10 +75,10 @@ func (b *Batch) Push(record interface{}) error {
 	// allocate the buffer of items to save, if needed
 	if b.itemsToSave == nil {
 		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
-		b.itemsToSave[0] = record
-		b.batchPosition = 1
-		b.mutex.Unlock()
-	} else if b.batchPosition >= b.batchSize {
+	}
+
+	// if our batch is full
+	if b.batchPosition >= b.batchSize {
 		batch := b.itemsToSave
 
 		// allocate a new buffer, put the inbound record as the first item
@@ -97,6 +97,8 @@ func (b *Batch) Push(record interface{}) error {
 		// dereference batch to clue GC, unless user wants to retain data
 		batch = nil
 	} else {
+
+		// our batch is not full - if the batch size
 		b.itemsToSave[b.batchPosition] = record
 		b.batchPosition++
 		b.mutex.Unlock()

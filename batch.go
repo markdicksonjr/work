@@ -69,6 +69,11 @@ func (b *Batch) Push(record interface{}) error {
 		return errors.New("batch not initialized")
 	}
 
+	// if only one item is in the batch, don't even bother storing it
+	if b.batchSize == 1 {
+		return b.pushHandler([]interface{}{record})
+	}
+
 	// lock around batch processing
 	b.mutex.Lock()
 
@@ -94,7 +99,6 @@ func (b *Batch) Push(record interface{}) error {
 			return err
 		}
 
-		// dereference batch to clue GC, unless user wants to retain data
 		batch = nil
 	} else {
 

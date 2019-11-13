@@ -3,11 +3,10 @@ package work
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 )
 
 type Batch struct {
-	batchPosition atomic.Value
+	batchPosition int
 	batchSize     int
 	itemsToSave   []interface{}
 	pushHandler   BatchHandler
@@ -47,7 +46,7 @@ type BytesSource interface {
 type BatchHandler func([]interface{}) error
 
 func (b *Batch) Init(batchSize int, pushHandler BatchHandler, flushHandler ...BatchHandler) {
-	b.batchPosition.Store(0)
+	b.batchPosition = 0
 
 	// grab the batch size - default to 100
 	b.batchSize = batchSize
@@ -83,20 +82,19 @@ func (b *Batch) Push(record interface{}) error {
 		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
 	}
 
-	batchPosition, _ := b.batchPosition.Load().(int)
-
 	// if our batch is full
-	if batchPosition >= b.batchSize {
+	if b.batchPosition >= b.batchSize {
 		batch := b.itemsToSave
 
 		// allocate a new buffer, put the inbound record as the first item
 		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
 		b.itemsToSave[0] = record
-		b.batchPosition.Store(1)
+		b.batchPosition = 1
 
 		// release the lock
 		b.mutex.Unlock()
 
+		// TODO: review impact of making this call from a goroutine - definitely faster, but would bugs arise from timing changes?
 		if err := b.pushHandler(batch); err != nil {
 			return err
 		}
@@ -105,9 +103,8 @@ func (b *Batch) Push(record interface{}) error {
 	} else {
 
 		// our batch is not full - if the batch size
-		b.itemsToSave[batchPosition] = record
-		batchPosition++
-		b.batchPosition.Store(batchPosition)
+		b.itemsToSave[b.batchPosition] = record
+		b.batchPosition++
 		b.mutex.Unlock()
 	}
 
@@ -116,7 +113,7 @@ func (b *Batch) Push(record interface{}) error {
 
 func (b *Batch) GetPosition() int {
 	b.mutex.Lock()
-	pos, _ := b.batchPosition.Load().(int)
+	pos := b.batchPosition
 	b.mutex.Unlock()
 	return pos
 }
@@ -128,13 +125,12 @@ func (b *Batch) Flush() error {
 
 	// lock around batch processing
 	b.mutex.Lock()
-	batchPosition, _ := b.batchPosition.Load().(int)
-	if batchPosition > 0 {
+	if b.batchPosition > 0 {
 
 		// snag the rest of the buffer as a slice, reset buffer
-		subSlice := (b.itemsToSave)[0:batchPosition]
+		subSlice := (b.itemsToSave)[0:b.batchPosition]
 		b.itemsToSave = make([]interface{}, b.batchSize, b.batchSize)
-		b.batchPosition.Store(0)
+		b.batchPosition = 0
 
 		// we've finished batch processing, unlock
 		b.mutex.Unlock()

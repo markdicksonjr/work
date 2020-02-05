@@ -13,23 +13,24 @@ type Job struct {
 // provides a mechanism for shared data and context across calls to the work function
 type Context struct {
 	Data interface{}
+	Id   int
 }
 
 func NewWorker(id int, workerPool chan chan Job, workFn WorkFunction, jobErrorFn JobErrorFunction, logFn LogFunction) Worker {
 	return Worker{
-		id:            id,
-		jobQueue:      make(chan Job),
-		workerPool:    workerPool,
-		quitChan:      make(chan bool),
-		workFn:        workFn,
-		jobErrorFn:    jobErrorFn,
-		logFn:         logFn,
-		workerContext: Context{},
+		jobQueue:   make(chan Job),
+		workerPool: workerPool,
+		quitChan:   make(chan bool),
+		workFn:     workFn,
+		jobErrorFn: jobErrorFn,
+		logFn:      logFn,
+		workerContext: Context{
+			Id: id,
+		},
 	}
 }
 
 type Worker struct {
-	id                    int
 	jobQueue              chan Job
 	workerPool            chan chan Job
 	quitChan              chan bool
@@ -80,22 +81,22 @@ func (w *Worker) start() {
 			case job := <-w.jobQueue:
 				workFnStart := time.Now()
 				atomic.AddInt32(&w.runningCount, 1)
-				_, _ = w.log("worker%d: started %s\n", w.id, job.Name)
+				_, _ = w.log("worker%d: started %s\n", w.workerContext.Id, job.Name)
 				err := w.workFn(job, &w.workerContext)
 				atomic.AddInt32(&w.runningCount, -1)
 				atomic.AddInt64(&w.totalProcessingTimeNs, time.Now().Sub(workFnStart).Nanoseconds())
 
 				if err != nil {
-					_, _ = w.log("worker%d: had error in %s: %s!\n", w.id, job.Name, err.Error())
+					_, _ = w.log("worker%d: had error in %s: %s!\n", w.workerContext.Id, job.Name, err.Error())
 					w.error(job, &w.workerContext, err)
 				}
 
 				// nil out data to clue GC
 				job.Context = nil
 
-				_, _ = w.log("worker%d: completed %s!\n", w.id, job.Name)
+				_, _ = w.log("worker%d: completed %s!\n", w.workerContext.Id, job.Name)
 			case <-w.quitChan:
-				_, _ = w.log("worker%d stopping\n", w.id)
+				_, _ = w.log("worker%d stopping\n", w.workerContext.Id)
 				return
 			}
 		}
@@ -107,7 +108,6 @@ func (w Worker) stop() {
 		w.quitChan <- true
 	}()
 }
-
 
 func (w Worker) log(format string, a ...interface{}) (n int, err error) {
 	if w.logFn != nil {

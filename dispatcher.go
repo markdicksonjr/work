@@ -142,7 +142,7 @@ func (d *Dispatcher) GetUtilization() Utilization {
 	for _, v := range d.workers {
 		results = append(results, WorkerUtilization{
 			PercentUtilization: v.GetPercentUtilization(),
-			Id:                 v.id,
+			Id:                 v.workerContext.Id,
 		})
 	}
 

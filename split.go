@@ -2,9 +2,8 @@ package work
 
 import "math"
 
-// Split will make "parts" evenly-sized slices, with the last slice
-// smaller than the others in the event len(data) is not divisible by
-// parts
+// Split will make "parts" evenly-sized slices, with the last slice smaller than the others in the event len(data) is
+// not divisible by parts
 func Split(data []interface{}, parts int) [][]interface{} {
 	if parts < 2 {
 		return [][]interface{}{ data }

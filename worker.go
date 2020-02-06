@@ -9,7 +9,8 @@ type Job struct {
 	Context interface{}
 }
 
-// provides a mechanism for shared data and context across calls to the work function
+// Context provides a mechanism for shared data and context across calls to the work function, as well as to provide
+// the id of the worker for tracking/logging purposes to the job functions
 type Context struct {
 	Data interface{}
 	Id   int
@@ -42,6 +43,7 @@ type Worker struct {
 	workerContext         Context
 }
 
+// GetRunningCount returns the total number of running workers this worker should count as (either 1 or 0)
 func (w Worker) GetRunningCount() int32 {
 	return w.runningCount
 }
@@ -51,17 +53,17 @@ func (w Worker) GetRunTimeNs() int64 {
 	return time.Now().Sub(w.startTime).Nanoseconds()
 }
 
-// how long the worker spent doing things across all runs
+// GetTotalActiveTimeNs returns how long the worker spent doing things across all runs
 func (w Worker) GetTotalActiveTimeNs() int64 {
 	return w.totalProcessingTimeNs
 }
 
-// how long the worker spent doing nothing across all runs
+// GetTotalIdleTimeNs returns how long the worker spent doing nothing across all runs
 func (w Worker) GetTotalIdleTimeNs() int64 {
 	return time.Now().Sub(w.startTime).Nanoseconds() - w.GetTotalActiveTimeNs()
 }
 
-// how much of the time the worker spent doing things across all runs, by %
+// GetPercentUtilization returns how much of the time the worker spent doing things across all runs, by %
 func (w Worker) GetPercentUtilization() float32 {
 	if w.GetRunTimeNs() == 0 {
 		return 0.0
@@ -80,22 +82,22 @@ func (w *Worker) start() {
 			case job := <-w.jobQueue:
 				workFnStart := time.Now()
 				atomic.AddInt32(&w.runningCount, 1)
-				_, _ = w.log("worker%d: started job", w.workerContext.Id)
+				w.log("worker%d: started job", w.workerContext.Id)
 				err := w.workFn(job, &w.workerContext)
 				atomic.AddInt32(&w.runningCount, -1)
 				atomic.AddInt64(&w.totalProcessingTimeNs, time.Now().Sub(workFnStart).Nanoseconds())
 
 				if err != nil {
-					_, _ = w.log("worker%d: had error: %s", w.workerContext.Id, err.Error())
+					w.log("worker%d: had error: %s", w.workerContext.Id, err.Error())
 					w.error(job, &w.workerContext, err)
 				}
 
 				// nil out data to clue GC
 				job.Context = nil
 
-				_, _ = w.log("worker%d: completed job", w.workerContext.Id)
+				w.log("worker%d: completed job", w.workerContext.Id)
 			case <-w.quitChan:
-				_, _ = w.log("worker%d stopping", w.workerContext.Id)
+				w.log("worker%d stopping", w.workerContext.Id)
 				return
 			}
 		}
@@ -108,12 +110,10 @@ func (w Worker) stop() {
 	}()
 }
 
-func (w Worker) log(format string, a ...interface{}) (n int, err error) {
+func (w Worker) log(format string, a ...interface{}) {
 	if w.logFn != nil {
-		return w.logFn(format, a...)
+		_, _ = w.logFn(format, a...)
 	}
-
-	return 0, nil
 }
 
 func (w Worker) error(job Job, workerContext *Context, err error) {

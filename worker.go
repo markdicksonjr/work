@@ -111,7 +111,7 @@ func (w Worker) stop() {
 
 func (w Worker) log(format string, a ...interface{}) (n int, err error) {
 	if w.logFn != nil {
-		return w.logFn(format, a)
+		return w.logFn(format, a...)
 	}
 
 	return 0, nil

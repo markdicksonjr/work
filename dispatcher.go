@@ -182,7 +182,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 }
 
 func (d *Dispatcher) log(format string, a ...interface{}) (n int, err error) {
-	return d.dispatchLogFn(format, a)
+	return d.dispatchLogFn(format, a...)
 }
 
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic

@@ -98,7 +98,7 @@ func (d *Dispatcher) WithJobErrFn(jobErrFn JobErrorFunction) *Dispatcher {
 // and it will halt the current thread until the queue becomes available
 func (d *Dispatcher) EnqueueJobAllowWait(job Job) {
 	if blocked := d.BlockWhileQueueFull(); blocked {
-		_, _ = d.log("blocked during enqueue because queue full")
+		_, _ = d.dispatchLogFn("blocked during enqueue because queue full")
 	}
 	d.jobQueue <- job
 }
@@ -141,7 +141,8 @@ func (d *Dispatcher) BlockWhileQueueFull() bool {
 	return didBlock
 }
 
-// get the overall utilization for the dispatcher (all workers), as well as a summary of how effective each worker was at staying busy
+// GetUtilization gets the overall utilization for the dispatcher (all workers), as well as a summary of how effective
+//each worker was at staying busy
 func (d *Dispatcher) GetUtilization() Utilization {
 	var results []WorkerUtilization
 	for _, v := range d.workers {
@@ -157,8 +158,8 @@ func (d *Dispatcher) GetUtilization() Utilization {
 	}
 }
 
-// blocks until all workers are idle, then resumes - typically, use this at the end of your flow to make sure all
-// workers are done before proceeding or exiting
+// WaitUntilIdle blocks until all workers are idle, then resumes - typically, use this at the end of your flow to make
+// sure all workers are done before proceeding or exiting
 func (d *Dispatcher) WaitUntilIdle() {
 
 	// allocate a channel
@@ -177,7 +178,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 				stopChan <- true
 				return
 			} else {
-				_, _ = d.waitLogFn("queued all jobs, but still running %d of them", runCount)
+				_, _ = d.waitLogFn("waiting for %d jobs to complete before continuing", runCount)
 			}
 		}
 	}()
@@ -186,27 +187,27 @@ func (d *Dispatcher) WaitUntilIdle() {
 	<-stopChan
 }
 
-func (d *Dispatcher) log(format string, a ...interface{}) (n int, err error) {
-	return d.dispatchLogFn(format, a...)
+func (d *Dispatcher) IsAnyWorkerIdle() bool {
+	return int(d.RunCount()) < cap(d.workerPool)
 }
 
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
 func (d *Dispatcher) dispatch() {
 	for {
 
-		// if there are no workers ready to receive the job, let the job queue fill up
+		// if there are no workers ready to receive the job, let the job queue potentially fill up
 		if !d.IsAnyWorkerIdle() {
-			time.Sleep(30 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			continue
 		}
 
-		_, _ = d.log("during round-robin enqueueing: %d running vs %d total", int(d.RunCount()), cap(d.workerPool))
+		_, _ = d.dispatchLogFn("during round-robin dispatching: %d / %d jobs running", int(d.RunCount()), cap(d.workerPool))
 
 		select {
 		case job := <-d.jobQueue:
 			go func() {
 				workerJobQueue := <-d.workerPool
-				_, _ = d.log("adding job to workerJobQueue")
+				_, _ = d.dispatchLogFn("adding job to workerJobQueue")
 				workerJobQueue <- job
 			}()
 		}
@@ -231,8 +232,4 @@ func (d *Dispatcher) sample() {
 			}
 		}
 	}()
-}
-
-func (d *Dispatcher) IsAnyWorkerIdle() bool {
-	return int(d.RunCount()) < cap(d.workerPool)
 }

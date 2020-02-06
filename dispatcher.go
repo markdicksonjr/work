@@ -108,7 +108,7 @@ func (d *Dispatcher) WithJobErrFn(jobErrFn JobErrorFunction) *Dispatcher {
 // and it will halt the current thread until the queue becomes available
 func (d *Dispatcher) EnqueueJobAllowWait(job Job) {
 	if blocked := d.BlockWhileQueueFull(); blocked {
-		_, _ = d.dispatchLogFn("blocked during enqueue because queue full")
+		_, _ = d.dispatchLogFn("blocked during enqueue due to full queue and fully-occupied workers")
 	}
 	d.jobQueue <- job
 }
@@ -137,9 +137,15 @@ func (d *Dispatcher) BlockWhileQueueFull() bool {
 
 		go func() {
 			for d.IsJobQueueFull() {
-				_, _ = d.waitLogFn("blocking due to full work queue")
+				if !didBlock {
+					_, _ = d.waitLogFn("blocking due to full work queue")
+				}
 				didBlock = true
 				time.Sleep(time.Millisecond * 100)
+			}
+
+			if didBlock {
+				_, _ = d.waitLogFn("stopped blocking work queue as it is no longer full")
 			}
 			complete <- true
 		}()
@@ -203,15 +209,23 @@ func (d *Dispatcher) IsAnyWorkerIdle() bool {
 
 // pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
 func (d *Dispatcher) dispatch() {
+	runCountAtLastLog := -1
 	for {
 
 		// if there are no workers ready to receive the job, let the job queue potentially fill up
 		if !d.IsAnyWorkerIdle() {
+			if runCountAtLastLog != cap(d.workerPool) {
+				_, _ = d.dispatchLogFn("during round-robin dispatching: %d / %d jobs running", cap(d.workerPool), cap(d.workerPool))
+				runCountAtLastLog = cap(d.workerPool)
+			}
 			time.Sleep(50 * time.Millisecond)
 			continue
 		}
 
-		_, _ = d.dispatchLogFn("during round-robin dispatching: %d / %d jobs running", int(d.RunCount()), cap(d.workerPool))
+		if runCountAtLastLog != int(d.RunCount()) {
+			_, _ = d.dispatchLogFn("during round-robin dispatching: %d / %d jobs running", int(d.RunCount()), cap(d.workerPool))
+			runCountAtLastLog = int(d.RunCount())
+		}
 
 		select {
 		case job := <-d.jobQueue:

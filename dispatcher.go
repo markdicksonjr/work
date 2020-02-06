@@ -94,7 +94,8 @@ func (d *Dispatcher) WithJobErrFn(jobErrFn JobErrorFunction) *Dispatcher {
 	return d
 }
 
-// allows users to enqueue jobs into the work queue
+// EnqueueJobAllowWait allows users to enqueue jobs into the work queue
+// and it will halt the current thread until the queue becomes available
 func (d *Dispatcher) EnqueueJobAllowWait(job Job) {
 	if blocked := d.BlockWhileQueueFull(); blocked {
 		_, _ = d.log("blocked during enqueue because queue full")
@@ -102,6 +103,10 @@ func (d *Dispatcher) EnqueueJobAllowWait(job Job) {
 	d.jobQueue <- job
 }
 
+// EnqueueJobAllowDrop allows users to enqueue jobs into the work queue
+// and when the queue is full, the job will be dropped.  This is useful
+// when the flow of the app is not to stop or when memory is not to
+// expand too much.
 func (d *Dispatcher) EnqueueJobAllowDrop(job Job) {
 	// TODO COUNT DROPS?
 	d.jobQueue <- job
@@ -172,7 +177,7 @@ func (d *Dispatcher) WaitUntilIdle() {
 				stopChan <- true
 				return
 			} else {
-				_, _ = d.waitLogFn("queued all jobs, but still running %d of them\n", runCount)
+				_, _ = d.waitLogFn("queued all jobs, but still running %d of them", runCount)
 			}
 		}
 	}()
@@ -195,14 +200,13 @@ func (d *Dispatcher) dispatch() {
 			continue
 		}
 
-		_, _ = d.log("during round-robin enqueueing: %d running vs %d total\n", int(d.RunCount()), cap(d.workerPool))
+		_, _ = d.log("during round-robin enqueueing: %d running vs %d total", int(d.RunCount()), cap(d.workerPool))
 
 		select {
 		case job := <-d.jobQueue:
 			go func() {
-				_, _ = d.log("fetching workerJobQueue for: %s\n", job.Name)
 				workerJobQueue := <-d.workerPool
-				_, _ = d.log("adding %s to workerJobQueue\n", job.Name)
+				_, _ = d.log("adding job to workerJobQueue")
 				workerJobQueue <- job
 			}()
 		}

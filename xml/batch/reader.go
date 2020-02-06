@@ -14,12 +14,10 @@ type Reader struct {
 	batch       *workers.Batch
 	dispatcher  *workers.Dispatcher
 	itemsToSave []interface{}
-	jobName     string
 	reader      workersXml.Reader
 }
 
 func (a *Reader) Init(
-	jobName string,
 	maxJobQueueSize int,
 	maxWorkers int,
 	batchSize int,
@@ -27,18 +25,18 @@ func (a *Reader) Init(
 	jobErrFn workers.JobErrorFunction,
 	logFn workers.LogFunction,
 ) {
-	a.jobName = jobName
 	a.batch = &workers.Batch{}
 	a.batch.Init(batchSize, func(i []interface{}) error {
-		a.dispatcher.EnqueueJobAllowWait(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, false)})
+		a.dispatcher.EnqueueJobAllowWait(workers.Job{Context: workersXml.RecordArrayFromInterfaceArray(i, false)})
 		return nil
 	}, func(i []interface{}) error {
-		a.dispatcher.EnqueueJobAllowWait(workers.Job{Name: a.jobName, Context: workersXml.RecordArrayFromInterfaceArray(i, true)})
+		a.dispatcher.EnqueueJobAllowWait(workers.Job{Context: workersXml.RecordArrayFromInterfaceArray(i, true)})
 		return nil
 	})
 
 	a.dispatcher = workers.NewDispatcher(maxJobQueueSize, maxWorkers, workFn).
 		WithJobErrFn(jobErrFn).
+		WithDispatchLogger(logFn).
 		WithWorkerLogger(logFn)
 }
 

@@ -1,5 +1,5 @@
 module github.com/markdicksonjr/work
 
-go 1.12
+go 1.13
 
-require golang.org/x/net v0.0.0-20190613194153-d28f0bde5980
+require golang.org/x/net v0.0.0-20200202094626-16171245cfb2

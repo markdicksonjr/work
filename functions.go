@@ -10,12 +10,17 @@ func NoLogFunction(format string, a ...interface{}) (n int, err error) {
 	return 0, nil
 }
 
+func PrintlnFunction(format string, a ...interface{}) (n int, err error) {
+	log.Printf(format+"\n", a...)
+	return 0, nil
+}
+
 func JobErrorsIgnoreFunction(job Job, err error) {
 
 }
 
 func JobErrorsFatalLogFunction(job Job, workerContext *Context, err error) {
-	log.Fatal("job " + job.Name + " encounted fatal error: " + err.Error())
+	log.Fatal("job encountered fatal error: " + err.Error())
 }
 
 // MutexFunction is a function that will only ever be run at most once at any given time

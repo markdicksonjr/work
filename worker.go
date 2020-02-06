@@ -6,7 +6,6 @@ import (
 )
 
 type Job struct {
-	Name    string
 	Context interface{}
 }
 
@@ -81,22 +80,22 @@ func (w *Worker) start() {
 			case job := <-w.jobQueue:
 				workFnStart := time.Now()
 				atomic.AddInt32(&w.runningCount, 1)
-				_, _ = w.log("worker%d: started %s\n", w.workerContext.Id, job.Name)
+				_, _ = w.log("worker%d: started job", w.workerContext.Id)
 				err := w.workFn(job, &w.workerContext)
 				atomic.AddInt32(&w.runningCount, -1)
 				atomic.AddInt64(&w.totalProcessingTimeNs, time.Now().Sub(workFnStart).Nanoseconds())
 
 				if err != nil {
-					_, _ = w.log("worker%d: had error in %s: %s!\n", w.workerContext.Id, job.Name, err.Error())
+					_, _ = w.log("worker%d: had error: %s", w.workerContext.Id, err.Error())
 					w.error(job, &w.workerContext, err)
 				}
 
 				// nil out data to clue GC
 				job.Context = nil
 
-				_, _ = w.log("worker%d: completed %s!\n", w.workerContext.Id, job.Name)
+				_, _ = w.log("worker%d: completed job", w.workerContext.Id)
 			case <-w.quitChan:
-				_, _ = w.log("worker%d stopping\n", w.workerContext.Id)
+				_, _ = w.log("worker%d stopping", w.workerContext.Id)
 				return
 			}
 		}

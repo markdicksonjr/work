@@ -8,7 +8,11 @@ type MutexMap struct {
 	core     sync.Mutex
 }
 
-var MutexMapSingleton = MutexMap{}
+var MutexMapSingleton = NewMutexMap()
+
+func NewMutexMap() *MutexMap {
+	return &MutexMap{}
+}
 
 func (s *MutexMap) Lock(index string) {
 	s.core.Lock()

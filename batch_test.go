@@ -6,6 +6,15 @@ import (
 	"testing"
 )
 
+func TestNewBatch(t *testing.T) {
+	b1 := NewBatch(100, func(i []interface{}) error {
+		return nil
+	})
+	if b1 == nil {
+		t.Fatal("new batch is nil")
+	}
+}
+
 func TestBatch_PushSingleItemBatch(t *testing.T) {
 	b1 := Batch{}
 	singleItemBatchCallCount := 0

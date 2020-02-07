@@ -45,6 +45,12 @@ type BytesSource interface {
 
 type BatchHandler func([]interface{}) error
 
+func NewBatch(batchSize int, pushHandler BatchHandler, flushHandler ...BatchHandler) *Batch {
+	b := Batch{}
+	b.Init(batchSize,  pushHandler, flushHandler...)
+	return &b
+}
+
 func (b *Batch) Init(batchSize int, pushHandler BatchHandler, flushHandler ...BatchHandler) {
 	b.batchPosition = 0
 

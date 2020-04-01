@@ -14,31 +14,42 @@ type Batch struct {
 	mutex         *sync.Mutex
 }
 
-// convenience interface - not used directly by this module
+// BatchSource is a convenience interface - not used directly by this module
 type BatchSource interface {
 	// when the caller wants to process slices of data
 	// gives the batch and some context about where in the whole set
 	GetBatches(
 		onBatch func(batch []interface{}, batchIndex, batchSize, totalItemCount int) error,
 	) error
+
+	// when the caller wants to close/finalize assets and resources
+	Finalize() error
 }
 
 // convenience interface - not used directly by this module
 type BatchSourceFactory func() BatchSource
 
-// convenience interface - not used directly by this module
+// BatchDestination is a convenience interface - not used directly by this module
 type BatchDestination interface {
+
+	// when the caller wants to put a slice of data somewhere
 	PutBatch([]interface{}) error
+
+	// when the caller wants to close/finalize assets and resources
 	Finalize() error
 }
 
-// convenience interface - not used directly by this module
+// BytesSource is a convenience interface - not used directly by this module
 type BytesSource interface {
+
 	// when the caller wants to process bytes of data per batch
 	// gives the batch and some context about where in the whole set
 	GetBatches(
 		onBatch func(bytes []byte, batchIndex, batchSize, totalItemCount int) error,
 	) error
+
+	// when the caller wants to close/finalize assets and resources
+	Finalize() error
 }
 
 // note: io.WriteCloser makes a convenient alternative to "BytesDestination"

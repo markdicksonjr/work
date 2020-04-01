@@ -68,7 +68,7 @@ func (d *Dispatcher) run() {
 	go d.sample()
 }
 
-// get the number of workers currently running
+// RunCount will get the number of workers currently running
 func (d *Dispatcher) RunCount() int32 {
 	var total int32 = 0
 
@@ -207,7 +207,7 @@ func (d *Dispatcher) IsAnyWorkerIdle() bool {
 	return int(d.RunCount()) < cap(d.workerPool)
 }
 
-// pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
+// dispatch pulls a job from the job queue and adds it to the worker's job queue - a worker will grab it in the worker logic
 func (d *Dispatcher) dispatch() {
 	runCountAtLastLog := -1
 	for {
@@ -238,7 +238,7 @@ func (d *Dispatcher) dispatch() {
 	}
 }
 
-// periodically check on the workers to get the runcount - if zero, add to the elapsed time count for "all workers idle"
+// sample periodically check on the workers to get the runcount - if zero, add to the elapsed time count for "all workers idle"
 func (d *Dispatcher) sample() {
 	ticker := time.NewTicker(d.idlenessSamplerInterval)
 	d.idlenessSamplerStopChannel = make(chan bool)

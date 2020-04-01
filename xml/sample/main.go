@@ -87,15 +87,15 @@ func tokenRecordsBuilderFunction(reader *xmlWorkerBatch.Reader) func(t xml.Token
 
 func main() {
 	var (
-		maxQueueSize = flag.Int("max_queue_size", 100, "The size of job queue")
-		maxBatchSize = flag.Int("max_batch_size", 100, "The max size of batches sent to workers")
+		maxQueueSize = flag.Int("max_queue_size", 1, "The size of job queue")
+		maxBatchSize = flag.Int("max_batch_size", 1, "The max size of batches sent to workers")
 		maxWorkers   = flag.Int("max_workers", 2, "The number of workers to start")
 	)
 	flag.Parse()
 
 	// allocate the XML batch reader
 	reader := xmlWorkerBatch.Reader{}
-	reader.Init(*maxQueueSize, *maxWorkers, *maxBatchSize, doWork, work.JobErrorsFatalLogFunction, work.NoLogFunction) // work.PrintlnFunction is an alternative
+	reader.Init(*maxQueueSize, *maxWorkers, *maxBatchSize, doWork, work.JobErrorsFatalLogFunction, work.PrintlnFunction) // work.PrintlnFunction is an alternative
 
 	// start decoding
 	if err := reader.Decode("test.xml", tokenRecordsBuilderFunction(&reader)); err != nil {
